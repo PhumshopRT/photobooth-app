@@ -3,9 +3,10 @@ import {
   Camera, Image as ImageIcon, Wand2, Download, QrCode, 
   Settings, Smile, ChevronRight, Sparkles, RefreshCcw, 
   X, Layers, Share2, Loader2, AlertCircle, ShieldAlert,
-  Plus, Trash2, ImagePlus, Paintbrush, MonitorSmartphone, LayoutTemplate, Square, Move, Maximize2, Copy, Grid3X3, Type, Printer, Smartphone
+  Plus, Trash2, ImagePlus, Paintbrush, MonitorSmartphone, LayoutTemplate, Square, Move, Maximize2, Copy, Grid3X3, Type, Printer, Smartphone, Minus, FlipHorizontal, ArrowUp, ArrowDown
 } from 'lucide-react';
 import QRCode from 'qrcode';
+import { STICKER_CATEGORIES, BUILTIN_STICKERS } from './stickerData.js';
 
 // --- INITIAL CONFIGURATION & ASSETS ---
 const LAYOUTS = {
@@ -128,6 +129,29 @@ const playAudioTone = (type) => {
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.12);
+    } else if (type === 'pop') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.08);
+    } else if (type === 'tap') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, ctx.currentTime);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.05);
     } else if (type === 'shutter') {
       const bufferSize = ctx.sampleRate * 0.08;
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -2026,58 +2050,141 @@ function BoothView({ config, onComplete, onCancel }) {
   );
 }
 
-// --- DRAGGABLE STICKER COMPONENT (PERCENTAGE BASED) ---
-// Changed to use percentage (x,y) so it perfectly scales between UI and Virtual Canvas
-function DraggableSticker({ sticker, containerRef, onUpdate, onDelete, isSelected, onSelect }) {
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  const [startPos, setStartPos] = useState({ mouseX: 0, mouseY: 0, stickerX: 0, stickerY: 0 });
+// --- DRAGGABLE STICKER COMPONENT (SUPER SMOOTH & INTUITIVE) ---
+function DraggableSticker({ 
+  sticker, 
+  containerRef, 
+  onUpdate, 
+  onDelete, 
+  onDuplicate,
+  onFlip,
+  isSelected, 
+  onSelect 
+}) {
+  const [activeAction, setActiveAction] = useState(null); // 'drag' | 'resize' | 'rotate'
+  const stickerRef = useRef(null);
+  const startRef = useRef({ 
+    clientX: 0, 
+    clientY: 0, 
+    stickerX: 0, 
+    stickerY: 0, 
+    scale: 1, 
+    rotation: 0,
+    containerWidth: 1,
+    containerHeight: 1
+  });
 
+  const getContainerDimensions = () => {
+    if (!containerRef.current) return { width: 1, height: 1 };
+    const rect = containerRef.current.getBoundingClientRect();
+    return { width: rect.width || 1, height: rect.height || 1 };
+  };
+
+  // Drag start (moving the sticker)
   const handlePointerDown = (e) => {
     e.stopPropagation();
     onSelect();
-    setIsDragging(true);
-    
+    setActiveAction('drag');
+
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    
-    setStartPos({
-      mouseX: clientX,
-      mouseY: clientY,
+    const { width, height } = getContainerDimensions();
+
+    startRef.current = {
+      clientX,
+      clientY,
       stickerX: sticker.x,
-      stickerY: sticker.y
-    });
+      stickerY: sticker.y,
+      scale: sticker.scale || 1,
+      rotation: sticker.rotation || 0,
+      containerWidth: width,
+      containerHeight: height
+    };
+    playAudioTone('tap');
+  };
+
+  // Resize start (bottom right corner handle)
+  const handleResizeStart = (e) => {
+    e.stopPropagation();
+    setActiveAction('resize');
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const { width, height } = getContainerDimensions();
+
+    startRef.current = {
+      clientX,
+      clientY,
+      stickerX: sticker.x,
+      stickerY: sticker.y,
+      scale: sticker.scale || 1,
+      rotation: sticker.rotation || 0,
+      containerWidth: width,
+      containerHeight: height
+    };
+  };
+
+  // Rotate start (top stalk knob)
+  const handleRotateStart = (e) => {
+    e.stopPropagation();
+    setActiveAction('rotate');
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    startRef.current = {
+      clientX,
+      clientY,
+      stickerX: sticker.x,
+      stickerY: sticker.y,
+      scale: sticker.scale || 1,
+      rotation: sticker.rotation || 0
+    };
   };
 
   const handlePointerMove = useCallback((e) => {
-    if ((!isDragging && !isResizing) || !containerRef.current) return;
+    if (!activeAction || !containerRef.current) return;
+    if (e.cancelable) e.preventDefault();
+
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    
-    const deltaX = clientX - startPos.mouseX;
-    const deltaY = clientY - startPos.mouseY;
 
-    if (isResizing) {
-      const delta = deltaX / containerRef.current.getBoundingClientRect().width;
-      onUpdate(sticker.id, { scale: Math.max(0.35, Math.min(4, startPos.scale + delta * 2)) });
-      return;
+    if (activeAction === 'drag') {
+      const deltaX = clientX - startRef.current.clientX;
+      const deltaY = clientY - startRef.current.clientY;
+      const deltaPercentX = (deltaX / startRef.current.containerWidth) * 100;
+      const deltaPercentY = (deltaY / startRef.current.containerHeight) * 100;
+
+      onUpdate(sticker.id, {
+        x: Math.max(0, Math.min(100, startRef.current.stickerX + deltaPercentX)),
+        y: Math.max(0, Math.min(100, startRef.current.stickerY + deltaPercentY))
+      });
+    } else if (activeAction === 'resize') {
+      const deltaX = clientX - startRef.current.clientX;
+      const deltaY = clientY - startRef.current.clientY;
+      const delta = (deltaX + deltaY) / (startRef.current.containerWidth * 0.7);
+      const newScale = Math.max(0.35, Math.min(4.0, startRef.current.scale + delta));
+      onUpdate(sticker.id, { scale: Math.round(newScale * 100) / 100 });
+    } else if (activeAction === 'rotate') {
+      if (stickerRef.current) {
+        const rect = stickerRef.current.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const radians = Math.atan2(clientY - centerY, clientX - centerX);
+        let degrees = Math.round(radians * (180 / Math.PI)) + 90;
+        if (degrees > 180) degrees -= 360;
+        if (degrees < -180) degrees += 360;
+        onUpdate(sticker.id, { rotation: degrees });
+      }
     }
+  }, [activeAction, onUpdate, sticker.id, containerRef]);
 
-    // Convert pixel delta to percentage based on container size
-    const rect = containerRef.current.getBoundingClientRect();
-    const deltaPercentX = (deltaX / rect.width) * 100;
-    const deltaPercentY = (deltaY / rect.height) * 100;
-
-    onUpdate(sticker.id, {
-      x: startPos.stickerX + deltaPercentX,
-      y: startPos.stickerY + deltaPercentY
-    });
-  }, [isDragging, isResizing, startPos, onUpdate, sticker.id, containerRef]);
-
-  const handlePointerUp = useCallback(() => { setIsDragging(false); setIsResizing(false); }, []);
+  const handlePointerUp = useCallback(() => {
+    setActiveAction(null);
+  }, []);
 
   useEffect(() => {
-    if (isDragging) {
+    if (activeAction) {
       window.addEventListener('mousemove', handlePointerMove, { passive: false });
       window.addEventListener('mouseup', handlePointerUp);
       window.addEventListener('touchmove', handlePointerMove, { passive: false });
@@ -2089,46 +2196,117 @@ function DraggableSticker({ sticker, containerRef, onUpdate, onDelete, isSelecte
       window.removeEventListener('touchmove', handlePointerMove);
       window.removeEventListener('touchend', handlePointerUp);
     };
-  }, [isDragging, handlePointerMove, handlePointerUp]);
+  }, [activeAction, handlePointerMove, handlePointerUp]);
+
+  const isFlipped = sticker.flipH ? -1 : 1;
 
   return (
     <div
+      ref={stickerRef}
       onMouseDown={handlePointerDown}
       onTouchStart={handlePointerDown}
-      className={`absolute cursor-move select-none inline-block ${isSelected ? 'ring-2 ring-indigo-500 ring-dashed rounded-md bg-white/20 backdrop-blur-sm' : ''}`}
+      className={`absolute cursor-grab active:cursor-grabbing select-none inline-block transition-[ring,shadow] ${
+        isSelected 
+          ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-black/50 rounded-2xl p-1 bg-amber-400/10 shadow-[0_0_25px_rgba(245,158,11,0.35)]' 
+          : 'hover:ring-1 hover:ring-white/30 rounded-xl'
+      }`}
       style={{
         left: `${sticker.x}%`,
         top: `${sticker.y}%`,
-        // Translate -50% to center the sticker on the x,y coordinate
-        transform: `translate(-50%, -50%) scale(${sticker.scale}) rotate(${sticker.rotation}deg)`,
+        transform: `translate(-50%, -50%) rotate(${sticker.rotation || 0}deg) scale(${sticker.scale || 1}) scaleX(${isFlipped})`,
         transformOrigin: 'center center',
         zIndex: isSelected ? 50 : 10,
-        fontSize: '4rem', // Base UI size
+        fontSize: '4.2rem',
         lineHeight: 1,
         touchAction: 'none'
       }}
     >
+      {/* Sticker Content (Image / SVG / Emoji / Text) */}
       {sticker.content.startsWith('data:image') ? (
-        <img src={sticker.content} className="w-full h-full object-contain pointer-events-none" draggable={false} style={{ width: '1em', height: '1em' }} />
-      ) : (
-        <span style={{ color: sticker.color || 'inherit', fontFamily: sticker.fontFamily || 'inherit', whiteSpace: 'nowrap' }}>{sticker.content}</span>
-      )}
-      
-      {isSelected && (
-        <div
-          className="absolute -bottom-3 -right-3 w-5 h-5 bg-indigo-500 rounded-sm cursor-se-resize border-2 border-white z-50"
-          onMouseDown={(e) => { e.stopPropagation(); setIsResizing(true); setStartPos({ mouseX: e.clientX, mouseY: e.clientY, stickerX: sticker.x, stickerY: sticker.y, scale: sticker.scale }); }}
-          onTouchStart={(e) => { e.stopPropagation(); const touch = e.touches[0]; setIsResizing(true); setStartPos({ mouseX: touch.clientX, mouseY: touch.clientY, stickerX: sticker.x, stickerY: sticker.y, scale: sticker.scale }); }}
+        <img 
+          src={sticker.content} 
+          alt="sticker"
+          className="w-full h-full object-contain pointer-events-none drop-shadow-md select-none" 
+          draggable={false} 
+          style={{ width: '1em', height: '1em' }} 
         />
-      )}
-      {isSelected && (
-        <button 
-          onClick={(e) => { e.stopPropagation(); onDelete(sticker.id); }}
-          onTouchStart={(e) => { e.stopPropagation(); onDelete(sticker.id); }}
-          className="absolute -top-4 -right-4 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white border-2 border-white shadow-xl hover:bg-red-600 hover:scale-110 z-50 transition-transform"
+      ) : (
+        <span 
+          style={{ 
+            color: sticker.color || 'inherit', 
+            fontFamily: sticker.fontFamily || 'inherit', 
+            whiteSpace: 'nowrap',
+            display: 'inline-block'
+          }}
+          className="drop-shadow-md select-none"
         >
-          <X className="w-5 h-5" />
-        </button>
+          {sticker.content}
+        </span>
+      )}
+
+      {/* --- SELECTION CONTROLS (DIRECTLY ON STICKER) --- */}
+      {isSelected && (
+        <>
+          {/* 1. Rotate Stalk & Knob (Top Center) */}
+          <div 
+            className="absolute -top-10 left-1/2 -translate-x-1/2 flex flex-col items-center z-50 pointer-events-auto"
+            style={{ transform: `scaleX(${isFlipped})` }}
+          >
+            <div 
+              onMouseDown={handleRotateStart}
+              onTouchStart={handleRotateStart}
+              className="w-8 h-8 rounded-full bg-amber-500 hover:bg-amber-400 text-zinc-950 flex items-center justify-center cursor-grab active:cursor-grabbing shadow-xl border-2 border-white transition-transform hover:scale-110 active:scale-95"
+              title="กดค้างแล้วหมุน (Drag to Rotate)"
+            >
+              <RefreshCcw className="w-4 h-4 stroke-[2.5]" />
+            </div>
+            <div className="w-0.5 h-3 bg-amber-400 shadow-sm" />
+          </div>
+
+          {/* 2. Scale Knob (Bottom Right) */}
+          <div 
+            onMouseDown={handleResizeStart}
+            onTouchStart={handleResizeStart}
+            className="absolute -bottom-3 -right-3 w-8 h-8 rounded-full bg-amber-500 hover:bg-amber-400 text-zinc-950 flex items-center justify-center cursor-se-resize shadow-xl border-2 border-white transition-transform hover:scale-110 active:scale-95 z-50 pointer-events-auto"
+            title="ปรับขนาด (Drag to Scale)"
+            style={{ transform: `scaleX(${isFlipped})` }}
+          >
+            <Maximize2 className="w-4 h-4 stroke-[2.5]" />
+          </div>
+
+          {/* 3. Delete Button (Top Right) */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDelete(sticker.id); playAudioTone('tap'); }}
+            onTouchStart={(e) => { e.stopPropagation(); onDelete(sticker.id); playAudioTone('tap'); }}
+            className="absolute -top-3 -right-3 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-xl border-2 border-white transition-transform hover:scale-110 active:scale-95 z-50 pointer-events-auto cursor-pointer"
+            title="ลบสติกเกอร์ (Delete)"
+            style={{ transform: `scaleX(${isFlipped})` }}
+          >
+            <X className="w-4 h-4 stroke-[3]" />
+          </button>
+
+          {/* 4. Duplicate Button (Top Left) */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDuplicate(sticker.id); }}
+            onTouchStart={(e) => { e.stopPropagation(); onDuplicate(sticker.id); }}
+            className="absolute -top-3 -left-3 w-8 h-8 bg-amber-600 hover:bg-amber-500 text-white rounded-full flex items-center justify-center shadow-xl border-2 border-white transition-transform hover:scale-110 active:scale-95 z-50 pointer-events-auto cursor-pointer"
+            title="ทำซ้ำ (Duplicate)"
+            style={{ transform: `scaleX(${isFlipped})` }}
+          >
+            <Copy className="w-4 h-4 stroke-[2.5]" />
+          </button>
+
+          {/* 5. Flip Horizontal Button (Bottom Left) */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); onFlip(sticker.id); }}
+            onTouchStart={(e) => { e.stopPropagation(); onFlip(sticker.id); }}
+            className="absolute -bottom-3 -left-3 w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-amber-300 rounded-full flex items-center justify-center shadow-xl border-2 border-amber-400/80 transition-transform hover:scale-110 active:scale-95 z-50 pointer-events-auto cursor-pointer"
+            title="พลิกซ้าย-ขวา (Flip Horizontal)"
+            style={{ transform: `scaleX(${isFlipped})` }}
+          >
+            <FlipHorizontal className="w-4 h-4 stroke-[2.5]" />
+          </button>
+        </>
       )}
     </div>
   );
@@ -2138,6 +2316,7 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
   const [stickers, setStickers] = useState([]);
   const [selectedStickerId, setSelectedStickerId] = useState(null);
   const [activeTab, setActiveTab] = useState('stickers'); 
+  const [selectedCategory, setSelectedCategory] = useState('cowboy');
   const [selectedFrame, setSelectedFrame] = useState(availableFrames[0] || DEFAULT_FRAMES[0]);
   const [isExporting, setIsExporting] = useState(false);
   const customLayout = isCustomLayout(config.layout);
@@ -2151,28 +2330,71 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
       x: 50, // Center %
       y: 50, // Center %
       scale: 1,
-      rotation: (Math.random() - 0.5) * 20
+      rotation: (Math.random() - 0.5) * 16,
+      flipH: false
     };
-    setStickers([...stickers, newSticker]);
+    setStickers(prev => [...prev, newSticker]);
     setSelectedStickerId(newSticker.id);
+    playAudioTone('pop');
   };
 
-  const addText = () => {
-    const newText = { id: `text_${Date.now()}`, content: 'ข้อความของฉัน', x: 50, y: 50, scale: 1, rotation: 0, isText: true, color: '#111827', fontFamily };
-    setStickers(prev => [...prev, newText]);
-    setSelectedStickerId(newText.id);
-    setActiveTab('text');
+  const duplicateSticker = (id) => {
+    const target = stickers.find(s => s.id === id);
+    if (!target) return;
+    const newSticker = {
+      ...target,
+      id: Date.now().toString(),
+      x: Math.min(92, target.x + 5),
+      y: Math.min(92, target.y + 5),
+    };
+    setStickers(prev => [...prev, newSticker]);
+    setSelectedStickerId(newSticker.id);
+    playAudioTone('pop');
+  };
+
+  const flipSticker = (id) => {
+    setStickers(prev => prev.map(s => s.id === id ? { ...s, flipH: !s.flipH } : s));
+    playAudioTone('tap');
+  };
+
+  const bringToFront = (id) => {
+    setStickers(prev => {
+      const target = prev.find(s => s.id === id);
+      if (!target) return prev;
+      return [...prev.filter(s => s.id !== id), target];
+    });
+    playAudioTone('tap');
+  };
+
+  const sendToBack = (id) => {
+    setStickers(prev => {
+      const target = prev.find(s => s.id === id);
+      if (!target) return prev;
+      return [target, ...prev.filter(s => s.id !== id)];
+    });
+    playAudioTone('tap');
   };
 
   const updateSticker = (id, newProps) => setStickers(prev => prev.map(s => s.id === id ? { ...s, ...newProps } : s));
+  
   const deleteSticker = (id) => {
     setStickers(prev => prev.filter(s => s.id !== id));
     setSelectedStickerId(null);
+    playAudioTone('tap');
   };
 
-  // --- NEW VIRTUAL CANVAS EXPORT LOGIC ---
-  // This solves the bug where images distort based on device screen size.
-  // We draw to a fixed-size mathematical canvas off-screen.
+  const clearAllStickers = () => {
+    if (stickers.length === 0) return;
+    if (window.confirm("คุณต้องการลบสติกเกอร์ทั้งหมดบนภาพหรือไม่?")) {
+      setStickers([]);
+      setSelectedStickerId(null);
+      playAudioTone('tap');
+    }
+  };
+
+  const selectedSticker = stickers.find(s => s.id === selectedStickerId);
+
+  // --- VIRTUAL CANVAS EXPORT LOGIC ---
   const handleExport = async () => {
     setIsExporting(true);
     setSelectedStickerId(null); 
@@ -2192,13 +2414,12 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
         ctx.fillStyle = selectedFrame.bg;
         ctx.fillRect(0, 0, vW, vH);
       } else if (selectedFrame.type === 'gradient' || selectedFrame.type === 'pattern') {
-        // Simple fallback for gradients/patterns on canvas
         ctx.fillStyle = selectedFrame.baseColor || selectedFrame.colors?.[0] || '#ffffff';
         ctx.fillRect(0, 0, vW, vH);
         
         if (selectedFrame.id === 'checkered') {
           ctx.fillStyle = selectedFrame.patternColor;
-          const s = 100; // Checker size relative to high-res canvas
+          const s = 100;
           for(let y=0; y<vH; y+=s) {
             for(let x=0; x<vW; x+=s) {
               if (Math.floor(x/s + y/s) % 2 === 0) ctx.fillRect(x, y, s, s);
@@ -2206,14 +2427,13 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
           }
         }
       } else if (selectedFrame.type === 'image') {
-        // White background behind photos for custom image frames
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, vW, vH);
       }
 
       // 2. Calculate Photo Layout Mathematics
       const padding = vW * ((photoConfig?.padding ?? 5) / 100); 
-      const bottomArea = vH * 0.1; // 10% bottom area for branding
+      const bottomArea = vH * 0.1;
       const contentW = vW - (padding * 2);
       const contentH = vH - padding - bottomArea;
       
@@ -2229,10 +2449,7 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
         return new Promise((resolve) => {
           const img = new Image();
           img.onload = () => {
-            let x;
-            let y;
-            let width;
-            let height;
+            let x, y, width, height;
 
             if (customLayout) {
               const slot = config.layout.slots[i];
@@ -2256,11 +2473,9 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
             ctx.roundRect(x, y, width, height, radius);
             ctx.clip();
 
-            // Draw photo background (gray)
             ctx.fillStyle = '#e4e4e7';
             ctx.fillRect(x, y, width, height);
 
-            // Draw Image
             drawImageCover(ctx, img, x, y, width, height);
 
             ctx.restore();
@@ -2292,17 +2507,15 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
         });
       }
 
-      // 4. Draw Branding and Date (Hide if using custom image frame or fully custom layout)
+      // 4. Draw Branding and Date
       if (selectedFrame.type !== 'image' && !customLayout) {
         ctx.fillStyle = selectedFrame.text;
         
-        // Brand Text
         ctx.font = `bold ${vW * 0.04}px '${fontFamily}', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(brandText, vW / 2, vH - (bottomArea / 2));
 
-        // Date (Top-left)
         const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
         ctx.font = `bold ${vW * 0.02}px '${fontFamily}', sans-serif`;
         ctx.textAlign = 'left';
@@ -2318,6 +2531,9 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
         
         ctx.translate(absX, absY); 
         ctx.rotate((s.rotation * Math.PI) / 180);
+        if (s.flipH) {
+          ctx.scale(-1, 1);
+        }
         
         const baseFontSize = vW * 0.12; 
         const size = baseFontSize * s.scale;
@@ -2356,26 +2572,48 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
   };
 
   return (
-    <div className="flex-1 flex flex-col md:flex-row bg-zinc-950 relative" onClick={() => setSelectedStickerId(null)}>
+    <div className="flex-1 flex flex-col md:flex-row bg-zinc-950 relative overflow-hidden" onClick={() => setSelectedStickerId(null)}>
+      <AuroraBackground />
+      <div className="absolute inset-0 pointer-events-none opacity-30 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-600/10 via-zinc-950/80 to-zinc-950" />
+
       {/* Top/Left Toolbar */}
-      <div className="w-full md:w-20 bg-zinc-900 border-b md:border-b-0 md:border-r border-zinc-800 flex flex-row md:flex-col items-center py-4 px-2 gap-6 z-20 shrink-0 shadow-xl">
-        <button onClick={onRetake} className="p-3 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors" title="ถ่ายใหม่">
-          <RefreshCcw className="w-6 h-6" />
+      <div className="w-full md:w-20 bg-zinc-900/90 backdrop-blur-xl border-b md:border-b-0 md:border-r border-amber-500/20 flex flex-row md:flex-col items-center py-3.5 px-3 gap-4 md:gap-6 z-30 shrink-0 shadow-2xl">
+        <button 
+          onClick={onRetake} 
+          className="p-3 text-zinc-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-2xl transition-all cursor-pointer" 
+          title="ถ่ายใหม่ (Retake)"
+        >
+          <RefreshCcw className="w-5 h-5" />
         </button>
-        <div className="w-px h-8 bg-zinc-800 hidden md:block" />
-        <div className="h-px w-8 bg-zinc-800 block md:hidden" />
+        
+        <div className="w-px h-6 bg-zinc-800 hidden md:block" />
+        <div className="h-px w-6 bg-zinc-800 block md:hidden" />
         
         <button 
           onClick={(e) => { e.stopPropagation(); setActiveTab('stickers'); }} 
-          className={`p-3 rounded-xl transition-colors ${activeTab === 'stickers' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
-          title="สติกเกอร์"
+          className={`p-3 rounded-2xl transition-all relative cursor-pointer ${
+            activeTab === 'stickers' 
+              ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 font-bold shadow-lg shadow-amber-500/30' 
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+          }`}
+          title="ตกแต่งสติกเกอร์ (Stickers)"
         >
           <Smile className="w-6 h-6" />
+          {stickers.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-400 text-zinc-950 text-[10px] font-black flex items-center justify-center shadow-md">
+              {stickers.length}
+            </span>
+          )}
         </button>
+        
         <button 
-          onClick={(e) => { e.stopPropagation(); setActiveTab('frame'); }}
-          className={`p-3 rounded-xl transition-colors ${activeTab === 'frame' ? 'bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-500/30' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
-          title="กรอบรูป"
+          onClick={(e) => { e.stopPropagation(); setActiveTab('frame'); }} 
+          className={`p-3 rounded-2xl transition-all cursor-pointer ${
+            activeTab === 'frame' 
+              ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 font-bold shadow-lg shadow-amber-500/30' 
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+          }`}
+          title="เปลี่ยนกรอบรูป (Frames)"
         >
           <Settings className="w-6 h-6" />
         </button>
@@ -2385,29 +2623,27 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
         <button 
           onClick={handleExport}
           disabled={isExporting}
-          className="p-3 bg-white text-zinc-950 rounded-xl hover:bg-zinc-200 transition-colors disabled:opacity-50 shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-          title="ส่งออก & แชร์"
+          className="py-3 px-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-zinc-950 rounded-2xl transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(245,158,11,0.4)] cursor-pointer flex items-center gap-2 font-black text-sm"
+          title="เสร็จสิ้น & พิมพ์/แชร์"
         >
-          {isExporting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Share2 className="w-6 h-6" />}
+          {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Share2 className="w-5 h-5 stroke-[2.5]" />}
+          <span className="hidden md:inline font-serif">เสร็จสิ้น</span>
         </button>
       </div>
 
-      {/* Main Canvas Area (UI Display) */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-zinc-800 to-zinc-950 relative">
-        <div className="relative max-w-full max-h-full flex items-center justify-center shadow-[0_0_60px_rgba(0,0,0,0.8)] overflow-visible">
+      {/* Main Canvas Area (Photo Layout Container) */}
+      <div className="flex-1 flex items-center justify-center p-3 sm:p-6 md:p-8 overflow-hidden relative z-10">
+        <div className="relative max-w-full max-h-full flex items-center justify-center shadow-[0_20px_60px_rgba(0,0,0,0.9)] overflow-visible">
           
-          {/* The Layout Container (Responsive UI Representation) 
-            It uses the aspect ratio to maintain shape, and relative positioning for stickers.
-          */}
           <div 
             ref={layoutRef}
-            className={`relative overflow-hidden ${customLayout ? '' : config.layout.aspect} flex flex-col transition-colors duration-300 ring-1 ring-white/10 max-w-full max-h-full w-auto`}
-              style={{ 
-                background: selectedFrame.type === 'image' ? '#ffffff' : selectedFrame.bg,
-                padding: customLayout ? 0 : `${photoConfig?.padding ?? 5}%`,
-                height: 'min(86vh, 820px)',
-                ...(customLayout ? getLayoutAspectStyle(config.layout) : {})
-              }}
+            className={`relative overflow-hidden ${customLayout ? '' : config.layout.aspect} flex flex-col transition-colors duration-300 ring-2 ring-amber-500/30 rounded-2xl max-w-full max-h-full w-auto`}
+            style={{ 
+              background: selectedFrame.type === 'image' ? '#ffffff' : selectedFrame.bg,
+              padding: customLayout ? 0 : `${photoConfig?.padding ?? 5}%`,
+              height: 'min(84vh, 780px)',
+              ...(customLayout ? getLayoutAspectStyle(config.layout) : {})
+            }}
           >
             {/* Photos Grid */}
             {customLayout ? (
@@ -2448,26 +2684,38 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
             {(config.layout.texts || []).map(t => (
               <div key={t.id} className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-bold pointer-events-none z-30" style={{ left: `${t.x}%`, top: `${t.y}%`, color: t.color, fontSize: `${Math.max(12, (t.size || 5) * 0.25)}vw`, fontFamily: `'${fontFamily}', sans-serif` }}>{t.text}</div>
             ))}
-            {!customLayout && selectedFrame.type !== 'image' && <div className="h-[10%] min-h-[40px] flex items-center justify-center shrink-0 z-20"><span className="font-bold text-[clamp(12px,2vh,24px)] tracking-widest" style={{ color: selectedFrame.text, fontFamily: `'${fontFamily}', sans-serif` }}>{brandText || 'STUDIO BOOTH'}</span></div>}
-            {customLayout && <div className="absolute bottom-[2%] left-0 right-0 text-center font-bold text-[clamp(12px,2vh,24px)] tracking-widest pointer-events-none z-30" style={{ color: selectedFrame.text, fontFamily: `'${fontFamily}', sans-serif` }}>{config.layout.brandText || brandText || 'STUDIO BOOTH'}</div>}
+            {!customLayout && selectedFrame.type !== 'image' && (
+              <div className="h-[10%] min-h-[40px] flex items-center justify-center shrink-0 z-20">
+                <span className="font-bold text-[clamp(12px,2vh,24px)] tracking-widest font-serif" style={{ color: selectedFrame.text }}>
+                  {brandText || 'WILD WEST STUDIO'}
+                </span>
+              </div>
+            )}
+            {customLayout && (
+              <div className="absolute bottom-[2%] left-0 right-0 text-center font-bold text-[clamp(12px,2vh,24px)] tracking-widest pointer-events-none z-30 font-serif" style={{ color: selectedFrame.text }}>
+                {config.layout.brandText || brandText || 'WILD WEST STUDIO'}
+              </div>
+            )}
             
             {/* Frame Overlay Image */}
             {selectedFrame.type === 'image' && (
               <img src={selectedFrame.src} className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10" />
             )}
 
-            {/* Draggable Stickers Overlay (inside the layout ref so % positioning works) */}
+            {/* Draggable Stickers Overlay */}
             <div className="absolute inset-0 z-50 pointer-events-none" style={{ clipPath: 'inset(0 0 0 0)' }}>
               <div className="relative w-full h-full pointer-events-auto">
                 {stickers.map(sticker => (
                   <DraggableSticker
                     key={sticker.id}
                     sticker={sticker}
-                    containerRef={layoutRef} // Pass container to calc % movement
+                    containerRef={layoutRef}
                     isSelected={selectedStickerId === sticker.id}
                     onSelect={() => setSelectedStickerId(sticker.id)}
                     onUpdate={updateSticker}
                     onDelete={deleteSticker}
+                    onDuplicate={duplicateSticker}
+                    onFlip={flipSticker}
                   />
                 ))}
               </div>
@@ -2476,80 +2724,248 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
         </div>
       </div>
 
-      {/* Right/Bottom Panel (Settings) */}
+      {/* Right/Bottom Panel (Controls & Sticker Drawer) */}
       <div 
-        className="w-full md:w-80 bg-zinc-900 border-t md:border-t-0 md:border-l border-zinc-800 p-6 flex flex-col gap-6 z-20 shrink-0 shadow-2xl overflow-y-auto"
+        className="w-full md:w-88 bg-zinc-900/95 backdrop-blur-2xl border-t md:border-t-0 md:border-l border-amber-500/20 p-5 sm:p-6 flex flex-col gap-5 z-20 shrink-0 shadow-2xl overflow-y-auto max-h-[45vh] md:max-h-full"
         onClick={(e) => e.stopPropagation()}
       >
         {activeTab === 'stickers' && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-            <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">ตกแต่งสติกเกอร์</h3>
-            <div className="grid grid-cols-4 gap-3">
-              {availableStickers.map((emoji, i) => (
-                <button
-                  key={i}
-                  onClick={() => addSticker(emoji)}
-                  className="aspect-square bg-zinc-800/50 hover:bg-zinc-700 rounded-xl flex items-center justify-center text-3xl transition-transform hover:scale-110 active:scale-95 border border-zinc-700 shadow-sm overflow-hidden"
+          <div className="space-y-5 animate-in fade-in duration-300">
+            {/* Header with Title and Clear All */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" /> ตกแต่งสติกเกอร์ & อิโมจิ
+              </h3>
+              {stickers.length > 0 && (
+                <button 
+                  onClick={clearAllStickers}
+                  className="text-[11px] text-zinc-400 hover:text-red-400 flex items-center gap-1 transition-colors cursor-pointer"
                 >
-                  {emoji.startsWith('data:image') ? <img src={emoji} className="w-full h-full object-contain p-2 pointer-events-none" /> : emoji}
+                  <Trash2 className="w-3 h-3" /> ล้างทั้งหมด ({stickers.length})
+                </button>
+              )}
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+              {STICKER_CATEGORIES.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition-all cursor-pointer ${
+                    selectedCategory === cat.id
+                      ? 'bg-amber-500 text-zinc-950 font-bold shadow-md shadow-amber-500/20 scale-[1.02]'
+                      : 'bg-zinc-800/80 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+              <button
+                onClick={() => setSelectedCategory('all')}
+                className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition-all cursor-pointer ${
+                  selectedCategory === 'all'
+                    ? 'bg-amber-500 text-zinc-950 font-bold shadow-md'
+                    : 'bg-zinc-800/80 text-zinc-400 hover:text-white'
+                }`}
+              >
+                ✨ ทั้งหมด
+              </button>
+            </div>
+
+            {/* Sticker Grid Picker */}
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-4 gap-2.5 max-h-48 md:max-h-56 overflow-y-auto p-1 bg-zinc-950/40 rounded-2xl border border-zinc-800/80">
+              {/* Built-in high quality vector stickers */}
+              {BUILTIN_STICKERS
+                .filter(s => selectedCategory === 'all' || s.category === selectedCategory)
+                .map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => addSticker(s.dataUri)}
+                    title={s.name}
+                    className="aspect-square bg-zinc-800/50 hover:bg-amber-500/15 rounded-2xl flex items-center justify-center p-2 transition-all hover:scale-110 active:scale-95 border border-zinc-700/60 hover:border-amber-400/80 shadow-sm cursor-pointer group"
+                  >
+                    <img 
+                      src={s.dataUri} 
+                      alt={s.name} 
+                      className="w-full h-full object-contain pointer-events-none drop-shadow-sm group-hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.5)] transition-all" 
+                    />
+                  </button>
+                ))
+              }
+
+              {/* Classic / Custom uploaded stickers */}
+              {(selectedCategory === 'all' || selectedCategory === 'classic') && availableStickers.map((item, i) => (
+                <button
+                  key={`custom_${i}`}
+                  onClick={() => addSticker(item)}
+                  className="aspect-square bg-zinc-800/50 hover:bg-amber-500/15 rounded-2xl flex items-center justify-center text-3xl transition-all hover:scale-110 active:scale-95 border border-zinc-700/60 hover:border-amber-400/80 shadow-sm cursor-pointer"
+                >
+                  {item.startsWith('data:image') ? (
+                    <img src={item} className="w-full h-full object-contain p-2 pointer-events-none" />
+                  ) : (
+                    <span>{item}</span>
+                  )}
                 </button>
               ))}
             </div>
-            
-            {selectedStickerId ? (
-              <div className="mt-8 p-5 bg-zinc-800/80 rounded-2xl border border-zinc-700 shadow-inner">
-                <h4 className="text-xs font-bold text-indigo-400 mb-5 uppercase tracking-wider">ปรับแต่งสติกเกอร์</h4>
-                <div className="space-y-6">
-                  <div>
-                    <label className="text-xs text-zinc-300 mb-2 flex justify-between">
-                      <span>ขนาด (Size)</span>
-                      <span>{Math.round(stickers.find(s => s.id === selectedStickerId)?.scale * 100)}%</span>
-                    </label>
-                    <input 
-                      type="range" min="0.5" max="3" step="0.1"
-                      className="w-full accent-indigo-500"
-                      value={stickers.find(s => s.id === selectedStickerId)?.scale || 1}
-                      onChange={(e) => updateSticker(selectedStickerId, { scale: parseFloat(e.target.value) })}
-                    />
+
+            {/* Selected Sticker Detail Controls */}
+            {selectedSticker ? (
+              <div className="p-4 bg-zinc-950/80 rounded-2xl border border-amber-500/30 shadow-inner space-y-4 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-amber-500/30 flex items-center justify-center overflow-hidden">
+                      {selectedSticker.content.startsWith('data:image') ? (
+                        <img src={selectedSticker.content} className="w-7 h-7 object-contain" />
+                      ) : (
+                        <span className="text-xl">{selectedSticker.content}</span>
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-amber-300">สติกเกอร์ที่เลือก</h4>
+                      <p className="text-[10px] text-zinc-400">ลากบนรูป หรือปรับจากแถบนี้ได้เลย</p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-xs text-zinc-300 mb-2 flex justify-between">
-                      <span>หมุน (Rotate)</span>
-                      <span>{stickers.find(s => s.id === selectedStickerId)?.rotation}°</span>
-                    </label>
-                    <input 
-                      type="range" min="-180" max="180"
-                      className="w-full accent-indigo-500"
-                      value={stickers.find(s => s.id === selectedStickerId)?.rotation || 0}
-                      onChange={(e) => updateSticker(selectedStickerId, { rotation: parseInt(e.target.value) })}
-                    />
+                  <button 
+                    onClick={() => deleteSticker(selectedSticker.id)}
+                    className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                    title="ลบสติกเกอร์"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Size Controls */}
+                <div>
+                  <div className="flex items-center justify-between text-xs text-zinc-300 mb-1.5">
+                    <span className="font-medium">ขนาด (Size)</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-amber-400">{Math.round((selectedSticker.scale || 1) * 100)}%</span>
+                      <button 
+                        onClick={() => updateSticker(selectedSticker.id, { scale: 1 })}
+                        className="text-[10px] text-zinc-500 hover:text-zinc-300 underline"
+                      >
+                        100%
+                      </button>
+                    </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => updateSticker(selectedSticker.id, { scale: Math.max(0.35, Math.round(((selectedSticker.scale || 1) - 0.1) * 10) / 10) })}
+                      className="p-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 cursor-pointer"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <input 
+                      type="range" min="0.4" max="3" step="0.05"
+                      className="w-full accent-amber-500 cursor-pointer"
+                      value={selectedSticker.scale || 1}
+                      onChange={(e) => updateSticker(selectedSticker.id, { scale: parseFloat(e.target.value) })}
+                    />
+                    <button 
+                      onClick={() => updateSticker(selectedSticker.id, { scale: Math.min(3.5, Math.round(((selectedSticker.scale || 1) + 0.1) * 10) / 10) })}
+                      className="p-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Rotation Controls */}
+                <div>
+                  <div className="flex items-center justify-between text-xs text-zinc-300 mb-1.5">
+                    <span className="font-medium">หมุน (Rotation)</span>
+                    <span className="font-mono text-amber-400">{selectedSticker.rotation || 0}°</span>
+                  </div>
+                  <input 
+                    type="range" min="-180" max="180" step="1"
+                    className="w-full accent-amber-500 cursor-pointer"
+                    value={selectedSticker.rotation || 0}
+                    onChange={(e) => updateSticker(selectedSticker.id, { rotation: parseInt(e.target.value) })}
+                  />
+                  {/* Quick Snap Angle Pills */}
+                  <div className="flex justify-between gap-1 mt-1.5">
+                    {[-90, -45, 0, 45, 90].map(deg => (
+                      <button
+                        key={deg}
+                        onClick={() => { updateSticker(selectedSticker.id, { rotation: deg }); playAudioTone('tap'); }}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
+                          selectedSticker.rotation === deg ? 'bg-amber-500 text-zinc-950 font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {deg}°
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quick Action Toolbar */}
+                <div className="grid grid-cols-4 gap-1.5 pt-1">
+                  <button 
+                    onClick={() => flipSticker(selectedSticker.id)}
+                    className="p-2 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 hover:text-white flex flex-col items-center gap-1 text-[10px] transition-colors cursor-pointer"
+                    title="พลิกกลับด้าน"
+                  >
+                    <FlipHorizontal className="w-4 h-4 text-amber-400" />
+                    <span>พลิก</span>
+                  </button>
+                  <button 
+                    onClick={() => bringToFront(selectedSticker.id)}
+                    className="p-2 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 hover:text-white flex flex-col items-center gap-1 text-[10px] transition-colors cursor-pointer"
+                    title="ย้ายมาหน้าสุด"
+                  >
+                    <ArrowUp className="w-4 h-4 text-amber-400" />
+                    <span>บนสุด</span>
+                  </button>
+                  <button 
+                    onClick={() => sendToBack(selectedSticker.id)}
+                    className="p-2 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 hover:text-white flex flex-col items-center gap-1 text-[10px] transition-colors cursor-pointer"
+                    title="ย้ายไปหลังสุด"
+                  >
+                    <ArrowDown className="w-4 h-4 text-amber-400" />
+                    <span>ล่างสุด</span>
+                  </button>
+                  <button 
+                    onClick={() => duplicateSticker(selectedSticker.id)}
+                    className="p-2 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 hover:text-white flex flex-col items-center gap-1 text-[10px] transition-colors cursor-pointer"
+                    title="ทำซ้ำ"
+                  >
+                    <Copy className="w-4 h-4 text-amber-400" />
+                    <span>ทำซ้ำ</span>
+                  </button>
                 </div>
               </div>
             ) : (
-              <div className="mt-8 p-6 text-center border-2 border-dashed border-zinc-800 rounded-2xl text-zinc-500 text-sm">
-                แตะที่สติกเกอร์บนรูป <br/> เพื่อปรับขนาดและหมุน
+              <div className="p-5 text-center border-2 border-dashed border-zinc-800/90 rounded-2xl text-zinc-400 text-xs leading-relaxed bg-zinc-950/30">
+                <div className="text-2xl mb-1.5">🤠</div>
+                <span className="font-semibold text-amber-300">วิธีตกแต่งรูป:</span>
+                <p className="mt-1 text-zinc-400">
+                  แตะสติกเกอร์ที่ต้องการจากรายการด้านบน เพื่อวางลงบนรูป จากนั้นแตะบนรูปเพื่อหมุน ขยาย ย้าย หรือพลิกด้านได้อย่างอิสระ!
+                </p>
               </div>
             )}
           </div>
         )}
 
         {activeTab === 'frame' && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-            <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">รูปแบบกรอบ (Frames)</h3>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-4 animate-in fade-in duration-300">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+              <Settings className="w-4 h-4 text-amber-400" /> รูปแบบกรอบภาพ (Frames)
+            </h3>
+            <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
               {availableFrames.map(frame => (
                 <button
                   key={frame.id}
-                  onClick={() => setSelectedFrame(frame)}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                  onClick={() => { setSelectedFrame(frame); playAudioTone('tap'); }}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all cursor-pointer ${
                     selectedFrame.id === frame.id 
-                      ? 'border-fuchsia-500 bg-fuchsia-500/10 shadow-[0_0_15px_rgba(217,70,239,0.2)]' 
+                      ? 'border-amber-400 bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.25)] scale-[1.02]' 
                       : 'border-zinc-800 bg-zinc-800/30 hover:border-zinc-600'
                   }`}
                 >
                   <div 
-                    className="w-full h-16 rounded-lg shadow-inner border border-zinc-700/50 overflow-hidden flex items-center justify-center bg-white"
+                    className="w-full h-16 rounded-xl shadow-inner border border-zinc-700/50 overflow-hidden flex items-center justify-center bg-white"
                     style={{ background: frame.type === 'color' ? frame.bg : 'transparent' }}
                   >
                     {frame.type === 'image' && <img src={frame.src} className="w-full h-full object-cover" />}
