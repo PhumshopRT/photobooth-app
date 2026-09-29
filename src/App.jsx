@@ -111,6 +111,167 @@ const drawImageCover = (ctx, img, x, y, width, height) => {
   ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
 };
 
+// --- AUDIO TONE SYNTHESIZER ---
+const playAudioTone = (type) => {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (type === 'beep') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } else if (type === 'shutter') {
+      const bufferSize = ctx.sampleRate * 0.08;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.value = 1200;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start();
+    }
+  } catch (e) {
+    // audio context muted or not permitted
+  }
+};
+
+// --- DYNAMIC AURORA LIQUID BACKGROUND ---
+function AuroraBackground({ theme = 'korean', bgImage = '' }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (bgImage) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+    let width, height;
+    let time = 0;
+
+    let themeColors = {
+      blob1: '#818cf8', // Indigo
+      blob2: '#c084fc', // Purple
+      blob3: '#f472b6', // Pink
+      blob4: '#38bdf8', // Cyan
+    };
+
+    if (theme === 'y2k') {
+      themeColors = { blob1: '#06b6d4', blob2: '#ec4899', blob3: '#8b5cf6', blob4: '#10b981' };
+    } else if (theme === 'film') {
+      themeColors = { blob1: '#d97706', blob2: '#b45309', blob3: '#78350f', blob4: '#f59e0b' };
+    } else if (theme === 'cowboy') {
+      themeColors = { blob1: '#f59e0b', blob2: '#c2410c', blob3: '#78350f', blob4: '#d97706' };
+    }
+
+    const resize = () => {
+      if (!canvas) return;
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', resize);
+    resize();
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+      time += 0.007;
+
+      const blobs = [
+        {
+          x: width * 0.3 + Math.sin(time * 0.7) * 120,
+          y: height * 0.3 + Math.cos(time * 0.9) * 100,
+          radius: Math.min(width, height) * 0.5,
+          color: themeColors.blob1,
+          opacity: 0.32
+        },
+        {
+          x: width * 0.7 + Math.cos(time * 0.8) * 140,
+          y: height * 0.4 + Math.sin(time * 0.6) * 120,
+          radius: Math.min(width, height) * 0.55,
+          color: themeColors.blob2,
+          opacity: 0.28
+        },
+        {
+          x: width * 0.5 + Math.sin(time * 1.1) * 150,
+          y: height * 0.75 + Math.cos(time * 0.5) * 110,
+          radius: Math.min(width, height) * 0.6,
+          color: themeColors.blob3,
+          opacity: 0.24
+        },
+        {
+          x: width * 0.2 + Math.cos(time * 0.5) * 100,
+          y: height * 0.7 + Math.sin(time * 0.8) * 90,
+          radius: Math.min(width, height) * 0.45,
+          color: themeColors.blob4,
+          opacity: 0.2
+        }
+      ];
+
+      blobs.forEach(b => {
+        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
+        grad.addColorStop(0, b.color);
+        grad.addColorStop(1, 'transparent');
+        ctx.save();
+        ctx.globalAlpha = b.opacity;
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [theme, bgImage]);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+      {bgImage ? (
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${bgImage})` }}
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+        </div>
+      ) : (
+        <>
+          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+          <div 
+            className="absolute inset-0 opacity-20 pointer-events-none mix-blend-overlay"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+            }} 
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 // --- MAIN APP COMPONENT ---
 export default function App() {
   const [view, setView] = useState('landing'); 
@@ -135,17 +296,18 @@ export default function App() {
 
   const DEFAULT_LANDING_CONFIG = {
     title: 'Yeehaw Photo Booth',
-    subtitle: 'ถ่ายรูปสไตล์คาวบอย กรอบสวย สติกเกอร์เพียบ!',
+    subtitle: 'ถ่ายรูปสไตล์คาวบอยตะวันตก กรอบสวย สติกเกอร์จัดเต็ม พร้อมวิดีโอไทม์แลปส์สุดเท่!',
     buttonText: '🤠 แตะเพื่อเริ่มถ่ายรูป',
-    brandText: 'STUDIO BOOTH',
+    brandText: 'WILD WEST STUDIO',
     shareTitle: 'รูปภาพของคุณพร้อมแล้ว!',
     shareSubtitle: 'สแกนคิวอาร์โค้ดเพื่อเซฟลงมือถือได้เลย หรือกดปุ่มดาวน์โหลดด้านล่าง',
     fontFamily: 'Kanit',
-    bgColor1: '#1a0e04',
-    bgColor2: '#3d1f00',
+    bgColor1: '#09090b',
+    bgColor2: '#1a0e04',
     accentColor: '#d4a055',
     showStars: true,
     bgImage: '',
+    theme: 'cowboy',
   };
   const [landingConfig, setLandingConfig] = useLocalStorage('studio-booth-landing', DEFAULT_LANDING_CONFIG);
   const DEFAULT_PHOTO_CONFIG = { borderRadius: 0, padding: 5, spacing: 5 };
@@ -174,7 +336,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-50 font-sans overflow-hidden flex flex-col selection:bg-indigo-500/30">
-      {view === 'landing' && <LandingView onStart={() => setView('setup')} onAdmin={() => setView('admin')} config={landingConfig} />}
+      {view === 'landing' && (
+        <LandingView 
+          onStart={() => setView('setup')} 
+          onAdmin={() => setView('admin')} 
+          config={landingConfig}
+          onUpdateConfig={setLandingConfig}
+        />
+      )}
       
       {view === 'admin' && (
         <AdminView 
@@ -227,89 +396,224 @@ export default function App() {
 
 // --- VIEWS ---
 
-function LandingView({ onStart, onAdmin, config }) {
-  const bgColor1 = config?.bgColor1 || '#1a0e04';
-  const bgColor2 = config?.bgColor2 || '#3d1f00';
-  const accentColor = config?.accentColor || '#d4a055';
-  const title = config?.title?.trim() || 'Yeehaw Photo Booth';
-  const subtitle = config?.subtitle?.trim() || 'ถ่ายรูปสไตล์คาวบอย กรอบสวย สติกเกอร์เพียบ!';
-  const buttonText = config?.buttonText?.trim() || '🤠 แตะเพื่อเริ่มถ่ายรูป';
+function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
+  const currentTheme = config?.theme || 'cowboy';
+  const isCowboy = currentTheme === 'cowboy';
+  const accentColor = config?.accentColor || (isCowboy ? '#d4a055' : currentTheme === 'korean' ? '#818cf8' : currentTheme === 'y2k' ? '#ec4899' : '#d97706');
+
+  const title = config?.title?.trim() || (isCowboy ? 'Yeehaw Photo Booth' : 'Snap Your Best Moments');
+  const subtitle = config?.subtitle?.trim() || (isCowboy ? 'ถ่ายรูปสไตล์คาวบอยตะวันตก กรอบสวย สติกเกอร์จัดเต็ม พร้อมวิดีโอไทม์แลปส์สุดเท่!' : 'บันทึกรอยยิ้มสไตล์เกาหลี พร้อมวิดีโอไทม์แลปส์เบื้องหลัง และดาวน์โหลดผ่าน QR Code ได้ทันที');
+  const buttonText = config?.buttonText?.trim() || (isCowboy ? '🤠 แตะเพื่อเริ่มถ่ายรูป' : 'แตะเพื่อเริ่มถ่ายรูป ✨');
+
+  const selectTheme = (newTheme) => {
+    if (!onUpdateConfig) return;
+    const presets = {
+      cowboy: {
+        title: 'Yeehaw Photo Booth',
+        subtitle: 'ถ่ายรูปสไตล์คาวบอยตะวันตก กรอบสวย สติกเกอร์จัดเต็ม พร้อมวิดีโอไทม์แลปส์สุดเท่!',
+        buttonText: '🤠 แตะเพื่อเริ่มถ่ายรูป',
+        brandText: 'WILD WEST STUDIO',
+        accentColor: '#d4a055',
+        theme: 'cowboy'
+      },
+      korean: {
+        title: 'Snap Your Best Moments',
+        subtitle: 'บันทึกรอยยิ้มสไตล์เกาหลี พร้อมวิดีโอไทม์แลปส์เบื้องหลัง และดาวน์โหลดผ่าน QR Code ได้ทันที',
+        buttonText: 'แตะเพื่อเริ่มถ่ายรูป ✨',
+        brandText: 'HARU STUDIO',
+        accentColor: '#818cf8',
+        theme: 'korean'
+      },
+      y2k: {
+        title: 'Y2K Cyber Photobooth',
+        subtitle: 'ตู้ถ่ายรูปสุดชิคสไตล์ Y2K กลิ่นอายเรโทร ปรับแต่งสติกเกอร์ได้จุใจ!',
+        buttonText: '⚡ START SHOOTING',
+        brandText: 'Y2K BOOTH',
+        accentColor: '#ec4899',
+        theme: 'y2k'
+      },
+      film: {
+        title: 'Analog Film Darkroom',
+        subtitle: 'สัมผัสบรรยากาศฟิล์มคลาสสิก อบอุ่น โทนสีนุ่มนวลเหนือกาลเวลา',
+        buttonText: '🎞️ เข้าตู้ถ่ายรูปฟิล์ม',
+        brandText: 'RETRO FILM',
+        accentColor: '#d97706',
+        theme: 'film'
+      }
+    };
+    onUpdateConfig({ ...config, ...presets[newTheme] });
+  };
 
   return (
-    <div 
-      className="flex-1 min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
-      style={{
-        background: config?.bgImage 
-          ? `url(${config.bgImage}) center/cover no-repeat` 
-          : `linear-gradient(to bottom, ${bgColor1}, ${bgColor2})`
-      }}
-    >
-      <div 
-        className="absolute inset-0 pointer-events-none" 
-        style={{
-          backgroundColor: config?.bgImage ? 'rgba(26, 14, 4, 0.6)' : 'transparent',
-          backgroundImage: config?.bgImage ? 'none' : `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E")`
-        }} 
-      />
+    <div className="flex-1 min-h-screen flex flex-col justify-between p-4 sm:p-8 relative overflow-hidden bg-zinc-950 text-zinc-100 select-none">
+      <AuroraBackground theme={currentTheme} bgImage={config?.bgImage} />
 
-      <div className="absolute inset-4 sm:inset-8 border-4 border-dashed rounded-3xl pointer-events-none opacity-40 z-0" style={{ borderColor: accentColor }} />
-
-      {config?.showStars !== false && (
+      {/* Floating Cowboy Ambient Charms (if cowboy theme) */}
+      {isCowboy && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          {Array.from({ length: 25 }).map((_, i) => (
-            <div 
-              key={i}
-              className="absolute bg-white rounded-full animate-twinkle"
-              style={{
-                width: Math.random() * 3 + 1 + 'px',
-                height: Math.random() * 3 + 1 + 'px',
-                top: Math.random() * 100 + '%',
-                left: Math.random() * 100 + '%',
-                animationDelay: `${Math.random() * 2}s`
-              }}
-            />
-          ))}
+          <div className="absolute top-[20%] left-[8%] text-3xl sm:text-4xl animate-float opacity-35" style={{ animationDelay: '0s' }}>🌵</div>
+          <div className="absolute bottom-[22%] left-[12%] text-2xl sm:text-3xl animate-float opacity-35" style={{ animationDelay: '1.8s' }}>🐎</div>
+          <div className="absolute top-[28%] right-[10%] text-3xl sm:text-4xl animate-sway opacity-35" style={{ animationDelay: '0.6s' }}>🤠</div>
+          <div className="absolute bottom-[25%] right-[14%] text-2xl sm:text-3xl animate-float opacity-35" style={{ animationDelay: '2.4s' }}>👢</div>
+          <div className="absolute top-[14%] right-[28%] text-xl sm:text-2xl animate-twinkle opacity-30">⭐</div>
+          <div className="absolute bottom-[16%] left-[32%] text-xl sm:text-2xl animate-twinkle opacity-30" style={{ animationDelay: '1s' }}>⭐</div>
         </div>
       )}
-      
-      <button onClick={onAdmin} className="absolute bottom-4 left-4 p-2 opacity-10 hover:opacity-100 transition-opacity z-20 text-white">
-        <Settings className="w-5 h-5" />
-      </button>
 
-      <div className="absolute top-1/4 left-10 text-4xl animate-float z-10" style={{ animationDelay: '0s' }}>🌵</div>
-      <div className="absolute bottom-1/4 right-10 text-4xl animate-float z-10" style={{ animationDelay: '1s' }}>👢</div>
-      <div className="absolute top-1/3 right-20 text-5xl animate-sway z-10" style={{ animationDelay: '0.5s' }}>🤠</div>
-      <div className="absolute bottom-1/3 left-20 text-3xl animate-float z-10" style={{ animationDelay: '1.5s' }}>🐎</div>
+      {/* Top Bar: Brand Badge & Theme Switcher */}
+      <header className="relative z-10 flex flex-wrap items-center justify-between gap-4 w-full max-w-6xl mx-auto pt-2">
+        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full glass border-white/10 shadow-lg backdrop-blur-md">
+          <span className="text-amber-400 text-sm">⭐</span>
+          <span className="text-xs font-semibold tracking-wide text-zinc-200">
+            {config?.brandText || 'WILD WEST STUDIO'} • PHOTO BOOTH KIOSK
+          </span>
+        </div>
 
-      <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mt-12">
-        <h1 
-          className="text-5xl md:text-7xl font-extrabold tracking-wider mb-6 font-serif"
-          style={{ 
-            color: accentColor,
-            textShadow: '2px 2px 0px #3d1f00, 4px 4px 0px rgba(0,0,0,0.5), 0 0 20px rgba(212,160,85,0.4)'
-          }}
+        {/* Theme Quick Switcher */}
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl glass border-white/10 text-xs">
+          <button
+            onClick={() => selectTheme('cowboy')}
+            className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
+              currentTheme === 'cowboy' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            🤠 คาวบอย (Cowboy)
+          </button>
+          <button
+            onClick={() => selectTheme('korean')}
+            className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
+              currentTheme === 'korean' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            🌸 เกาหลี
+          </button>
+          <button
+            onClick={() => selectTheme('y2k')}
+            className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
+              currentTheme === 'y2k' ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            ⚡ Y2K
+          </button>
+          <button
+            onClick={() => selectTheme('film')}
+            className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
+              currentTheme === 'film' ? 'bg-amber-700 text-white shadow-lg shadow-amber-700/30' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            🎞️ ฟิล์ม
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content Hero */}
+      <main className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-center gap-12 w-full max-w-6xl mx-auto my-auto py-8">
+        {/* Left Column: Heading & CTA */}
+        <div className="flex-1 text-center md:text-left space-y-6 max-w-xl">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold glass border-white/10 text-amber-200/90 shadow-sm">
+            <span className="text-amber-400 text-sm">🤠</span>
+            <span>Wild West Saloon • Instant Prints & Timelapse</span>
+          </div>
+
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] font-serif">
+            {isCowboy || title.includes('Yeehaw') ? (
+              <>
+                <span className="text-amber-50 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">YEEHAW</span> <br />
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 drop-shadow-[0_4px_25px_rgba(217,119,6,0.6)]">
+                  PHOTO BOOTH
+                </span>
+              </>
+            ) : (
+              <span style={{ color: accentColor }}>{title}</span>
+            )}
+          </h1>
+
+          <p className="text-base sm:text-lg text-amber-100/80 leading-relaxed font-light">
+            {subtitle}
+          </p>
+
+          <div className="pt-3 flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start">
+            <button
+              onClick={onStart}
+              className="group relative px-9 py-5 rounded-2xl font-bold text-lg transition-all duration-300 shadow-2xl hover:scale-105 active:scale-95 flex items-center gap-3 overflow-hidden cursor-pointer border border-amber-400/30"
+              style={{
+                background: isCowboy
+                  ? 'linear-gradient(135deg, #d97706, #78350f)'
+                  : `linear-gradient(135deg, ${accentColor}, #6366f1)`,
+                color: '#ffffff',
+                boxShadow: isCowboy
+                  ? '0 10px 40px rgba(217, 119, 6, 0.45)'
+                  : `0 10px 40px ${accentColor}40`
+              }}
+            >
+              <div className="absolute inset-0 bg-white/15 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Camera className="w-6 h-6 transition-transform group-hover:rotate-12" />
+              <span>{buttonText}</span>
+              <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+            </button>
+
+            <div className="flex items-center gap-2 text-xs text-zinc-300 glass px-4 py-2.5 rounded-xl border border-white/10">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              กล้อง HD พร้อมถ่ายรูป
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: 3D Floating Interactive Photo Strips Showcase (Cowboy Themed) */}
+        <div className="relative w-full max-w-[320px] h-[450px] flex items-center justify-center animate-float-slow">
+          {/* Background Ambient Glow */}
+          <div 
+            className="absolute w-72 h-72 rounded-full blur-3xl opacity-40 -z-10" 
+            style={{ background: `radial-gradient(circle, ${accentColor}, #ea580c)` }} 
+          />
+
+          {/* Left Tilt Strip (Desert Parchment / Wild West Card) */}
+          <div className="absolute w-36 bg-[#fefce8] p-2.5 rounded-2xl shadow-2xl transform -rotate-12 -translate-x-12 translate-y-3 transition-transform duration-500 hover:rotate-0 hover:scale-105 z-10 border border-amber-200/80 cursor-pointer">
+            <div className="space-y-1.5">
+              <div className="h-24 bg-amber-100 rounded-xl overflow-hidden relative shadow-inner">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80" alt="Preview 1" className="w-full h-full object-cover sepia-[0.3]" />
+                <span className="absolute top-1 right-1 text-sm drop-shadow">🤠</span>
+              </div>
+              <div className="h-24 bg-amber-100 rounded-xl overflow-hidden relative shadow-inner">
+                <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80" alt="Preview 2" className="w-full h-full object-cover sepia-[0.2]" />
+                <span className="absolute bottom-1 left-1 text-sm drop-shadow">⭐</span>
+              </div>
+            </div>
+            <div className="pt-2 text-center text-[9px] font-bold tracking-widest text-amber-950 font-serif">
+              WILD WEST
+            </div>
+          </div>
+
+          {/* Right Tilt Strip (Dark Saddle Leather Card) */}
+          <div className="absolute w-36 bg-[#1c120c] p-2.5 rounded-2xl shadow-2xl transform rotate-6 translate-x-10 -translate-y-3 transition-transform duration-500 hover:rotate-0 hover:scale-105 z-20 border border-amber-500/30 cursor-pointer">
+            <div className="space-y-1.5">
+              <div className="h-24 bg-[#2e1c12] rounded-xl overflow-hidden relative shadow-inner">
+                <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80" alt="Preview 3" className="w-full h-full object-cover" />
+                <span className="absolute top-1 right-1 text-sm drop-shadow">👢</span>
+              </div>
+              <div className="h-24 bg-[#2e1c12] rounded-xl overflow-hidden relative shadow-inner">
+                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80" alt="Preview 4" className="w-full h-full object-cover" />
+                <span className="absolute bottom-1 left-1 text-sm drop-shadow">🌵</span>
+              </div>
+            </div>
+            <div className="pt-2 text-center text-[9px] font-bold tracking-widest text-amber-400 font-serif">
+              WANTED • YEEHAW
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer: Admin Settings Trigger */}
+      <footer className="relative z-10 w-full max-w-6xl mx-auto flex items-center justify-between text-xs text-amber-200/60 pb-2">
+        <button
+          onClick={onAdmin}
+          className="p-2.5 glass rounded-full opacity-35 hover:opacity-100 transition-all text-amber-400 hover:text-amber-200 hover:scale-110 shadow-lg cursor-pointer border border-amber-500/20"
+          title="ตั้งค่าผู้ดูแลระบบ (Admin)"
         >
-          {title}
-        </h1>
-        
-        <p className="text-xl md:text-2xl mb-12 max-w-lg leading-relaxed font-medium" style={{ color: '#FFF8DC', textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>
-          {subtitle}
-        </p>
-        
-        <button 
-          onClick={onStart}
-          className="group relative inline-flex items-center justify-center gap-3 px-10 py-5 rounded-full text-xl font-bold transition-all hover:scale-105 active:scale-95 animate-glow-pulse border-2 overflow-hidden"
-          style={{ 
-            backgroundColor: '#3d1f00',
-            color: accentColor,
-            borderColor: accentColor
-          }}
-        >
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")` }} />
-          <span className="relative z-10 drop-shadow-md">{buttonText}</span>
-          <ChevronRight className="w-6 h-6 relative z-10 transition-transform group-hover:translate-x-1" />
+          <Settings className="w-4 h-4" />
         </button>
-      </div>
+        <span className="text-[11px] font-mono tracking-wider">TAP ANYWHERE TO INTERACT • WILD WEST BOOTH</span>
+      </footer>
     </div>
   );
 }
@@ -864,7 +1168,68 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-4">
                   <div>
-                    <label className="text-xs text-zinc-400 mb-1 block">ชื่อหน้าแรก (Title)</label>
+                    <div className="bg-zinc-800/80 p-3 rounded-xl border border-white/10 space-y-2 mb-4">
+                    <label className="text-xs font-bold text-zinc-300 block">🎨 เลือกพรีเซ็ตธีม (Quick Theme Presets)</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setLandingConfig({
+                          ...landingConfig,
+                          title: 'Snap Your Best Moments',
+                          subtitle: 'บันทึกรอยยิ้มสไตล์เกาหลี พร้อมวิดีโอไทม์แลปส์เบื้องหลัง และดาวน์โหลดผ่าน QR Code ได้ทันที',
+                          buttonText: 'แตะเพื่อเริ่มถ่ายรูป ✨',
+                          accentColor: '#818cf8',
+                          theme: 'korean'
+                        })}
+                        className="p-2 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-xs font-bold text-indigo-300 hover:bg-indigo-500/30 transition-all text-center cursor-pointer"
+                      >
+                        🌸 เกาหลี (Haru)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLandingConfig({
+                          ...landingConfig,
+                          title: 'Y2K Cyber Photobooth',
+                          subtitle: 'ตู้ถ่ายรูปสุดชิคสไตล์ Y2K กลิ่นอายเรโทร ปรับแต่งสติกเกอร์ได้จุใจ!',
+                          buttonText: '⚡ START SHOOTING',
+                          accentColor: '#ec4899',
+                          theme: 'y2k'
+                        })}
+                        className="p-2 rounded-lg bg-pink-500/20 border border-pink-500/40 text-xs font-bold text-pink-300 hover:bg-pink-500/30 transition-all text-center cursor-pointer"
+                      >
+                        ⚡ Cyber Y2K
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLandingConfig({
+                          ...landingConfig,
+                          title: 'Analog Film Darkroom',
+                          subtitle: 'สัมผัสบรรยากาศฟิล์มคลาสสิก อบอุ่น โทนสีนุ่มนวลเหนือกาลเวลา',
+                          buttonText: '🎞️ เข้าตู้ถ่ายรูปฟิล์ม',
+                          accentColor: '#d97706',
+                          theme: 'film'
+                        })}
+                        className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/40 text-xs font-bold text-amber-300 hover:bg-amber-500/30 transition-all text-center cursor-pointer"
+                      >
+                        🎞️ ฟิล์มวินเทจ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLandingConfig({
+                          ...landingConfig,
+                          title: 'Yeehaw Photo Booth',
+                          subtitle: 'ถ่ายรูปสไตล์คาวบอย กรอบสวย สติกเกอร์เพียบ!',
+                          buttonText: '🤠 แตะเพื่อเริ่มถ่ายรูป',
+                          accentColor: '#d4a055',
+                          theme: 'cowboy'
+                        })}
+                        className="p-2 rounded-lg bg-amber-800/20 border border-amber-700/40 text-xs font-bold text-amber-200 hover:bg-amber-800/30 transition-all text-center cursor-pointer"
+                      >
+                        🤠 คาวบอย
+                      </button>
+                    </div>
+                  </div>
+                  <label className="text-xs text-zinc-400 mb-1 block">ชื่อหน้าแรก (Title)</label>
                     <input type="text" value={landingConfig.title} onChange={e => setLandingConfig({...landingConfig, title: e.target.value})} className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-amber-500" />
                   </div>
                   <div>
