@@ -29,7 +29,9 @@ const DEFAULT_FRAMES = [
   { id: 'white', name: 'คลาสสิกขาว', type: 'color', bg: '#ffffff', text: '#000000' },
   { id: 'black', name: 'คลาสสิกดำ', type: 'color', bg: '#18181b', text: '#ffffff' },
   { id: 'y2k', name: 'Y2K ชมพู', type: 'color', bg: '#f472b6', text: '#ffffff' },
-  { id: 'checkered', name: 'หมากรุก', type: 'pattern', bg: 'repeating-conic-gradient(#cbd5e1 0% 25%, #ffffff 0% 50%) 50% / 40px 40px', baseColor: '#ffffff', patternColor: '#cbd5e1', size: 40, text: '#000000' }
+  { id: 'checkered', name: 'หมากรุก', type: 'pattern', bg: 'repeating-conic-gradient(#cbd5e1 0% 25%, #ffffff 0% 50%) 50% / 40px 40px', baseColor: '#ffffff', patternColor: '#cbd5e1', size: 40, text: '#000000' },
+  { id: 'scrapbook_blue', name: 'สมุดภาพฟ้า', type: 'pattern', design: 'scrapbook', bg: 'radial-gradient(circle at 10px 10px, #fff9 1.5px, transparent 2px), linear-gradient(135deg,#d8efff,#a8d6f4)', baseColor: '#c7e5fa', accent: '#3978a8', text: '#173b5a' },
+  { id: 'scrapbook_pink', name: 'สมุดภาพชมพู', type: 'pattern', design: 'scrapbook', bg: 'radial-gradient(circle at 10px 10px, #fff9 1.5px, transparent 2px), linear-gradient(135deg,#ffe1ec,#f5b9d0)', baseColor: '#f9d3e2', accent: '#b34c78', text: '#682640' }
 ];
 
 const DEFAULT_STICKERS = ['👑', '✨', '💖', '🎉', '🌸', '😎', '🐱', '🎀', '🎈', '🔥', '💎', '🌈', '🦋'];
@@ -88,6 +90,50 @@ const getSafeCustomLayouts = (layouts) => (
       ))
     : []
 );
+
+const drawScrapbookPaper = (ctx, width, height, frame) => {
+  ctx.fillStyle = frame.baseColor || '#dceeff';
+  ctx.fillRect(0, 0, width, height);
+  const accent = frame.accent || '#3978a8';
+  const inset = Math.max(24, width * 0.035);
+  const cell = Math.max(72, width * 0.12);
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = '#ffffff';
+  for (let y = cell / 2; y < height; y += cell) {
+    for (let x = cell / 2; x < width; x += cell) {
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(3, width * 0.004), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 0.78;
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = Math.max(3, width * 0.006);
+  ctx.setLineDash([width * 0.012, width * 0.009]);
+  ctx.strokeRect(inset, inset, width - inset * 2, height - inset * 2);
+  ctx.setLineDash([]);
+  const drawStar = (x, y, radius) => {
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    for (let point = 0; point < 10; point++) {
+      const angle = -Math.PI / 2 + (point * Math.PI) / 5;
+      const r = point % 2 ? radius * 0.42 : radius;
+      const px = x + Math.cos(angle) * r;
+      const py = y + Math.sin(angle) * r;
+      if (point === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+  };
+  const radius = Math.max(10, width * 0.018);
+  for (let i = 0; i < 12; i++) {
+    const x = inset + radius + ((i * 73) % Math.max(1, width - inset * 2 - radius * 2));
+    const y = inset + radius + ((i * 137) % Math.max(1, height - inset * 2 - radius * 2));
+    drawStar(x, y, radius * (i % 3 === 0 ? 1.1 : 0.65));
+  }
+  ctx.restore();
+};
 
 const drawImageCover = (ctx, img, x, y, width, height) => {
   const imageAspect = img.width / img.height;
@@ -368,6 +414,15 @@ export default function App() {
   const DEFAULT_PHOTO_CONFIG = { borderRadius: 0, padding: 5, spacing: 5 };
   const [photoConfig, setPhotoConfig] = useLocalStorage('studio-booth-photo', DEFAULT_PHOTO_CONFIG);
   const [customLayouts, setCustomLayouts] = useLocalStorage('studio-booth-custom-layouts', []);
+
+  useEffect(() => {
+    setCustomFrames(current => {
+      const saved = Array.isArray(current) ? current : [];
+      const savedIds = new Set(saved.map(frame => frame?.id));
+      const missingDefaults = DEFAULT_FRAMES.filter(frame => !savedIds.has(frame.id));
+      return missingDefaults.length ? [...saved, ...missingDefaults] : saved;
+    });
+  }, [setCustomFrames]);
 
   useEffect(() => {
     const font = landingConfig?.fontFamily || 'Kanit';
@@ -730,12 +785,17 @@ const LAYOUT_TEMPLATES = [
   ]},
 ];
 
-const getAvailableLayouts = (customLayouts = []) => [
-  LAYOUTS.single,
-  LAYOUTS.strip,
-  LAYOUTS.strip_4,
-  ...getSafeCustomLayouts(customLayouts),
-];
+const PREVIEW_LAYOUTS = [LAYOUTS.single, LAYOUTS.strip, LAYOUTS.strip_4];
+const getPresetOverrideId = (layoutId) => `preset_${layoutId}`;
+const getAvailableLayouts = (customLayouts = []) => {
+  const safeLayouts = getSafeCustomLayouts(customLayouts);
+  const presets = PREVIEW_LAYOUTS.map(base => {
+    const saved = safeLayouts.find(layout => layout.id === getPresetOverrideId(base.id));
+    return saved ? { ...base, ...saved, id: base.id, presetOverride: true } : base;
+  });
+  const custom = safeLayouts.filter(layout => !layout.presetOverride && !PREVIEW_LAYOUTS.some(base => layout.id === getPresetOverrideId(base.id)));
+  return [...presets, ...custom];
+};
 
 const getEditableSlots = (layout) => layout.slots || Array.from({ length: layout.shots || 1 }, (_, i) => ({
   id: i,
@@ -771,7 +831,9 @@ function LayoutEditorTab({ customLayouts = [], setCustomLayouts = () => {}, land
       setSlots([{ id: 0, x: 10, y: 10, w: 80, h: 35 }]);
       setTexts([]);
     }
-    setEditingLayout('new');
+    setEditingLayout(template && PREVIEW_LAYOUTS.some(layout => layout.id === template.id)
+      ? `preset:${template.id}`
+      : 'new');
     setSelectedSlot(null);
   };
 
@@ -819,8 +881,13 @@ function LayoutEditorTab({ customLayouts = [], setCustomLayouts = () => {}, land
 
   const saveLayout = () => {
     if (!layoutName.trim()) return;
+    const presetId = typeof editingLayout === 'string' && editingLayout.startsWith('preset:')
+      ? editingLayout.slice('preset:'.length)
+      : null;
+    const savedId = presetId ? getPresetOverrideId(presetId) : editingLayout === 'new' ? `custom_${Date.now()}` : editingLayout;
     const layoutData = {
-      id: editingLayout === 'new' ? 'custom_' + Date.now() : editingLayout,
+      id: savedId,
+      ...(presetId ? { presetOverride: true, sourceLayoutId: presetId } : {}),
       name: layoutName,
       vW: canvasSize.vW,
       vH: canvasSize.vH,
@@ -829,11 +896,12 @@ function LayoutEditorTab({ customLayouts = [], setCustomLayouts = () => {}, land
       brandText,
     };
     
-    if (editingLayout === 'new') {
-      setCustomLayouts([...safeCustomLayouts, layoutData]);
-    } else {
-      setCustomLayouts(safeCustomLayouts.map(l => l.id === editingLayout ? layoutData : l));
-    }
+    setCustomLayouts(previous => {
+      const layouts = getSafeCustomLayouts(previous);
+      const existingIndex = layouts.findIndex(layout => layout.id === savedId);
+      if (editingLayout === 'new' || existingIndex < 0) return [...layouts, layoutData];
+      return layouts.map(layout => layout.id === savedId ? layoutData : layout);
+    });
     setEditingLayout(null);
   };
 
@@ -915,7 +983,7 @@ function LayoutEditorTab({ customLayouts = [], setCustomLayouts = () => {}, land
         <div>
           <h4 className="text-sm font-bold text-zinc-400 mb-3 uppercase tracking-wider">เลย์เอาต์เดียวกับหน้า Preview</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {[LAYOUTS.single, LAYOUTS.strip, LAYOUTS.strip_4].filter(Boolean).map(layout => (
+            {getAvailableLayouts(safeCustomLayouts).filter(layout => PREVIEW_LAYOUTS.some(base => base.id === layout.id)).map(layout => (
               <button key={layout.id} onClick={() => startNewLayout(layout)} className="bg-zinc-800 border border-blue-500/40 rounded-xl p-3 text-left hover:border-green-500 transition-colors">
                 <div className="w-full aspect-[3/4] bg-zinc-900 rounded-lg relative mb-2 overflow-hidden p-2">
                   <div className={`w-full h-full flex flex-col gap-1 ${layout.cols === 2 ? 'grid grid-cols-2' : ''}`}>
@@ -930,11 +998,11 @@ function LayoutEditorTab({ customLayouts = [], setCustomLayouts = () => {}, land
         </div>
 
         {/* Saved Layouts */}
-        {safeCustomLayouts.length > 0 && (
+        {safeCustomLayouts.some(layout => !layout.presetOverride && !PREVIEW_LAYOUTS.some(base => layout.id === getPresetOverrideId(base.id))) && (
           <div>
             <h4 className="text-sm font-bold text-zinc-400 mb-3 uppercase tracking-wider">เลย์เอาต์ที่บันทึกไว้</h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {safeCustomLayouts.map(l => (
+              {safeCustomLayouts.filter(layout => !layout.presetOverride && !PREVIEW_LAYOUTS.some(base => layout.id === getPresetOverrideId(base.id))).map(l => (
                 <div key={l.id} className="bg-zinc-800 border border-zinc-700 rounded-xl p-3 relative group">
                   <div className="w-full aspect-[3/4] bg-zinc-900 rounded-lg relative mb-2 overflow-hidden cursor-pointer" onClick={() => editLayout(l)}>
                     {l.slots.map((s, j) => (
@@ -1518,12 +1586,12 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
               {frames.map((fr, i) => (
                 <div key={i} className="flex items-center justify-between bg-zinc-800 p-3 rounded-xl border border-zinc-700">
                   <div className="flex items-center gap-3 w-3/4">
-                    <div className="w-8 h-8 rounded-md shadow-inner border border-white/10 shrink-0 overflow-hidden bg-white flex items-center justify-center" style={{ background: fr.type === 'color' ? fr.bg : 'transparent' }}>
+                    <div className="w-8 h-8 rounded-md shadow-inner border border-white/10 shrink-0 overflow-hidden bg-white flex items-center justify-center" style={{ background: fr.type === 'image' ? 'transparent' : fr.bg }}>
                       {fr.type === 'image' && <img src={fr.src} className="w-full h-full object-cover" />}
                     </div>
                     <span className="text-sm font-medium truncate">{fr.name}</span>
                   </div>
-                  {i >= 4 && ( // Don't allow deleting default frames easily
+                  {!DEFAULT_FRAMES.some(defaultFrame => defaultFrame.id === fr.id) && (
                     <button onClick={() => setFrames(frames.filter(f => f.id !== fr.id))} className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -2316,7 +2384,7 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
   const [stickers, setStickers] = useState([]);
   const [selectedStickerId, setSelectedStickerId] = useState(null);
   const [activeTab, setActiveTab] = useState('stickers'); 
-  const [selectedCategory, setSelectedCategory] = useState('cowboy');
+  const [selectedCategory, setSelectedCategory] = useState('sparkles');
   const [selectedFrame, setSelectedFrame] = useState(availableFrames[0] || DEFAULT_FRAMES[0]);
   const [isExporting, setIsExporting] = useState(false);
   const customLayout = isCustomLayout(config.layout);
@@ -2414,8 +2482,12 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
         ctx.fillStyle = selectedFrame.bg;
         ctx.fillRect(0, 0, vW, vH);
       } else if (selectedFrame.type === 'gradient' || selectedFrame.type === 'pattern') {
-        ctx.fillStyle = selectedFrame.baseColor || selectedFrame.colors?.[0] || '#ffffff';
-        ctx.fillRect(0, 0, vW, vH);
+        if (selectedFrame.design === 'scrapbook') {
+          drawScrapbookPaper(ctx, vW, vH, selectedFrame);
+        } else {
+          ctx.fillStyle = selectedFrame.baseColor || selectedFrame.colors?.[0] || '#ffffff';
+          ctx.fillRect(0, 0, vW, vH);
+        }
         
         if (selectedFrame.id === 'checkered') {
           ctx.fillStyle = selectedFrame.patternColor;
@@ -2966,7 +3038,7 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
                 >
                   <div 
                     className="w-full h-16 rounded-xl shadow-inner border border-zinc-700/50 overflow-hidden flex items-center justify-center bg-white"
-                    style={{ background: frame.type === 'color' ? frame.bg : 'transparent' }}
+                    style={{ background: frame.type === 'image' ? 'transparent' : frame.bg }}
                   >
                     {frame.type === 'image' && <img src={frame.src} className="w-full h-full object-cover" />}
                   </div>
