@@ -154,7 +154,7 @@ const playAudioTone = (type) => {
 };
 
 // --- DYNAMIC AURORA LIQUID BACKGROUND ---
-function AuroraBackground({ theme = 'korean', bgImage = '' }) {
+function AuroraBackground({ theme = 'cowboy', bgImage = '' }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -167,18 +167,18 @@ function AuroraBackground({ theme = 'korean', bgImage = '' }) {
     let time = 0;
 
     let themeColors = {
-      blob1: '#818cf8', // Indigo
-      blob2: '#c084fc', // Purple
-      blob3: '#f472b6', // Pink
-      blob4: '#38bdf8', // Cyan
+      blob1: '#f59e0b', // Glowing Amber
+      blob2: '#c2410c', // Terracotta Desert Sunset
+      blob3: '#78350f', // Rich Saddle Leather
+      blob4: '#d97706', // Sunset Gold
     };
 
-    if (theme === 'y2k') {
+    if (theme === 'korean') {
+      themeColors = { blob1: '#818cf8', blob2: '#c084fc', blob3: '#f472b6', blob4: '#38bdf8' };
+    } else if (theme === 'y2k') {
       themeColors = { blob1: '#06b6d4', blob2: '#ec4899', blob3: '#8b5cf6', blob4: '#10b981' };
     } else if (theme === 'film') {
       themeColors = { blob1: '#d97706', blob2: '#b45309', blob3: '#78350f', blob4: '#f59e0b' };
-    } else if (theme === 'cowboy') {
-      themeColors = { blob1: '#f59e0b', blob2: '#c2410c', blob3: '#78350f', blob4: '#d97706' };
     }
 
     const resize = () => {
@@ -189,38 +189,50 @@ function AuroraBackground({ theme = 'korean', bgImage = '' }) {
     window.addEventListener('resize', resize);
     resize();
 
+    // Floating golden embers / dust particles
+    const particles = Array.from({ length: 30 }, () => ({
+      x: Math.random() * (window.innerWidth || 1200),
+      y: Math.random() * (window.innerHeight || 800),
+      radius: Math.random() * 2.2 + 0.6,
+      speedY: Math.random() * 0.35 + 0.12,
+      speedX: (Math.random() - 0.5) * 0.25,
+      opacity: Math.random() * 0.6 + 0.2,
+      twinkle: Math.random() * Math.PI * 2
+    }));
+
     const render = () => {
       ctx.clearRect(0, 0, width, height);
       time += 0.007;
 
+      // 1. Draw glowing liquid aurora blobs
       const blobs = [
         {
           x: width * 0.3 + Math.sin(time * 0.7) * 120,
           y: height * 0.3 + Math.cos(time * 0.9) * 100,
-          radius: Math.min(width, height) * 0.5,
+          radius: Math.min(width, height) * 0.55,
           color: themeColors.blob1,
-          opacity: 0.32
+          opacity: 0.35
         },
         {
           x: width * 0.7 + Math.cos(time * 0.8) * 140,
           y: height * 0.4 + Math.sin(time * 0.6) * 120,
-          radius: Math.min(width, height) * 0.55,
+          radius: Math.min(width, height) * 0.58,
           color: themeColors.blob2,
-          opacity: 0.28
+          opacity: 0.3
         },
         {
           x: width * 0.5 + Math.sin(time * 1.1) * 150,
           y: height * 0.75 + Math.cos(time * 0.5) * 110,
-          radius: Math.min(width, height) * 0.6,
+          radius: Math.min(width, height) * 0.62,
           color: themeColors.blob3,
-          opacity: 0.24
+          opacity: 0.25
         },
         {
           x: width * 0.2 + Math.cos(time * 0.5) * 100,
           y: height * 0.7 + Math.sin(time * 0.8) * 90,
-          radius: Math.min(width, height) * 0.45,
+          radius: Math.min(width, height) * 0.48,
           color: themeColors.blob4,
-          opacity: 0.2
+          opacity: 0.22
         }
       ];
 
@@ -233,6 +245,25 @@ function AuroraBackground({ theme = 'korean', bgImage = '' }) {
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // 2. Draw floating golden embers / campfire sparks
+      particles.forEach(p => {
+        p.y -= p.speedY;
+        p.x += Math.sin(time + p.twinkle) * 0.3;
+        if (p.y < -10) {
+          p.y = height + 10;
+          p.x = Math.random() * width;
+        }
+        ctx.save();
+        ctx.fillStyle = theme === 'cowboy' ? '#fbbf24' : '#ffffff';
+        ctx.globalAlpha = p.opacity * (0.6 + 0.4 * Math.sin(time * 2 + p.twinkle));
+        ctx.shadowColor = theme === 'cowboy' ? '#f59e0b' : '#818cf8';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       });
@@ -402,16 +433,16 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
   const accentColor = config?.accentColor || (isCowboy ? '#d4a055' : currentTheme === 'korean' ? '#818cf8' : currentTheme === 'y2k' ? '#ec4899' : '#d97706');
 
   const title = config?.title?.trim() || (isCowboy ? 'Yeehaw Photo Booth' : 'Snap Your Best Moments');
-  const subtitle = config?.subtitle?.trim() || (isCowboy ? 'ถ่ายรูปสไตล์คาวบอยตะวันตก กรอบสวย สติกเกอร์จัดเต็ม พร้อมวิดีโอไทม์แลปส์สุดเท่!' : 'บันทึกรอยยิ้มสไตล์เกาหลี พร้อมวิดีโอไทม์แลปส์เบื้องหลัง และดาวน์โหลดผ่าน QR Code ได้ทันที');
-  const buttonText = config?.buttonText?.trim() || (isCowboy ? '🤠 แตะเพื่อเริ่มถ่ายรูป' : 'แตะเพื่อเริ่มถ่ายรูป ✨');
+  const subtitle = config?.subtitle?.trim() || (isCowboy ? 'ตู้ถ่ายรูปสไตล์คาวบอยตะวันตกสุดพรีเมียม ถ่ายช็อตเท่ๆ พร้อมบันทึกวิดีโอไทม์แลปส์เบื้องหลัง และสแกน QR Code รับรูปทันที! 🤠' : 'บันทึกรอยยิ้มสไตล์เกาหลี พร้อมวิดีโอไทม์แลปส์เบื้องหลัง และดาวน์โหลดผ่าน QR Code ได้ทันที');
+  const buttonText = config?.buttonText?.trim() || (isCowboy ? '🤠 เริ่มถ่ายรูปสไตล์คาวบอย' : 'แตะเพื่อเริ่มถ่ายรูป ✨');
 
   const selectTheme = (newTheme) => {
     if (!onUpdateConfig) return;
     const presets = {
       cowboy: {
         title: 'Yeehaw Photo Booth',
-        subtitle: 'ถ่ายรูปสไตล์คาวบอยตะวันตก กรอบสวย สติกเกอร์จัดเต็ม พร้อมวิดีโอไทม์แลปส์สุดเท่!',
-        buttonText: '🤠 แตะเพื่อเริ่มถ่ายรูป',
+        subtitle: 'ตู้ถ่ายรูปสไตล์คาวบอยตะวันตกสุดพรีเมียม ถ่ายช็อตเท่ๆ พร้อมบันทึกวิดีโอไทม์แลปส์เบื้องหลัง และสแกน QR Code รับรูปทันที! 🤠',
+        buttonText: '🤠 เริ่มถ่ายรูปสไตล์คาวบอย',
         brandText: 'WILD WEST STUDIO',
         accentColor: '#d4a055',
         theme: 'cowboy'
@@ -448,33 +479,39 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
     <div className="flex-1 min-h-screen flex flex-col justify-between p-4 sm:p-8 relative overflow-hidden bg-zinc-950 text-zinc-100 select-none">
       <AuroraBackground theme={currentTheme} bgImage={config?.bgImage} />
 
-      {/* Floating Cowboy Ambient Charms (if cowboy theme) */}
+      {/* Floating Cowboy Ambient Charms */}
       {isCowboy && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-[20%] left-[8%] text-3xl sm:text-4xl animate-float opacity-35" style={{ animationDelay: '0s' }}>🌵</div>
-          <div className="absolute bottom-[22%] left-[12%] text-2xl sm:text-3xl animate-float opacity-35" style={{ animationDelay: '1.8s' }}>🐎</div>
-          <div className="absolute top-[28%] right-[10%] text-3xl sm:text-4xl animate-sway opacity-35" style={{ animationDelay: '0.6s' }}>🤠</div>
-          <div className="absolute bottom-[25%] right-[14%] text-2xl sm:text-3xl animate-float opacity-35" style={{ animationDelay: '2.4s' }}>👢</div>
-          <div className="absolute top-[14%] right-[28%] text-xl sm:text-2xl animate-twinkle opacity-30">⭐</div>
-          <div className="absolute bottom-[16%] left-[32%] text-xl sm:text-2xl animate-twinkle opacity-30" style={{ animationDelay: '1s' }}>⭐</div>
+          <div className="absolute top-[20%] left-[6%] text-3xl sm:text-4xl animate-float opacity-30" style={{ animationDelay: '0s' }}>🌵</div>
+          <div className="absolute bottom-[20%] left-[10%] text-2xl sm:text-3xl animate-float opacity-30" style={{ animationDelay: '2s' }}>🐎</div>
+          <div className="absolute top-[26%] right-[8%] text-3xl sm:text-4xl animate-sway opacity-30" style={{ animationDelay: '0.8s' }}>🤠</div>
+          <div className="absolute bottom-[24%] right-[12%] text-2xl sm:text-3xl animate-float opacity-30" style={{ animationDelay: '2.8s' }}>👢</div>
+          <div className="absolute top-[12%] right-[26%] text-xl sm:text-2xl animate-twinkle opacity-25">⭐</div>
+          <div className="absolute bottom-[14%] left-[30%] text-xl sm:text-2xl animate-twinkle opacity-25" style={{ animationDelay: '1.2s' }}>⭐</div>
         </div>
       )}
 
       {/* Top Bar: Brand Badge & Theme Switcher */}
       <header className="relative z-10 flex flex-wrap items-center justify-between gap-4 w-full max-w-6xl mx-auto pt-2">
-        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full glass border-white/10 shadow-lg backdrop-blur-md">
-          <span className="text-amber-400 text-sm">⭐</span>
-          <span className="text-xs font-semibold tracking-wide text-zinc-200">
-            {config?.brandText || 'WILD WEST STUDIO'} • PHOTO BOOTH KIOSK
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full glass border border-amber-500/30 shadow-lg backdrop-blur-md">
+            <span className="text-amber-400 text-sm">⭐</span>
+            <span className="text-xs font-semibold tracking-wide text-amber-200">
+              {config?.brandText || 'WILD WEST STUDIO'} • PHOTO BOOTH KIOSK
+            </span>
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full glass border border-white/10 text-[11px] text-emerald-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            CAMERA READY
+          </div>
         </div>
 
         {/* Theme Quick Switcher */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl glass border-white/10 text-xs">
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl glass border-white/10 text-xs shadow-md">
           <button
             onClick={() => selectTheme('cowboy')}
-            className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
-              currentTheme === 'cowboy' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'text-zinc-400 hover:text-white'
+            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+              currentTheme === 'cowboy' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/40 ring-1 ring-amber-400/50' : 'text-zinc-400 hover:text-white'
             }`}
           >
             🤠 คาวบอย (Cowboy)
@@ -508,18 +545,18 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
 
       {/* Main Content Hero */}
       <main className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-center gap-12 w-full max-w-6xl mx-auto my-auto py-8">
-        {/* Left Column: Heading & CTA */}
+        {/* Left Column: Heading, Subtitle & CTA */}
         <div className="flex-1 text-center md:text-left space-y-6 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold glass border-white/10 text-amber-200/90 shadow-sm">
-            <span className="text-amber-400 text-sm">🤠</span>
-            <span>Wild West Saloon • Instant Prints & Timelapse</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold glass border border-amber-500/30 text-amber-200/90 shadow-inner">
+            <span className="text-amber-400 text-sm">🌵</span>
+            <span>SALOON EXPERIENCE • HD PRINT & TIMELAPSE VIDEO 🐎</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] font-serif">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] font-serif">
             {isCowboy || title.includes('Yeehaw') ? (
               <>
-                <span className="text-amber-50 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">YEEHAW</span> <br />
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 drop-shadow-[0_4px_25px_rgba(217,119,6,0.6)]">
+                <span className="text-amber-50 drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">YEEHAW</span> <br />
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 drop-shadow-[0_4px_30px_rgba(217,119,6,0.65)]">
                   PHOTO BOOTH
                 </span>
               </>
@@ -528,75 +565,87 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
             )}
           </h1>
 
-          <p className="text-base sm:text-lg text-amber-100/80 leading-relaxed font-light">
+          <p className="text-base sm:text-lg text-amber-100/85 leading-relaxed font-light">
             {subtitle}
           </p>
 
-          <div className="pt-3 flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start">
+          {/* Three Feature Capsules */}
+          <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-1">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full glass border border-white/10 text-xs text-amber-200/80">
+              <span>⚡</span> <span>คมชัดระดับ Studio HD</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full glass border border-white/10 text-xs text-amber-200/80">
+              <span>🎬</span> <span>บันทึก Timelapse อัตโนมัติ</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full glass border border-white/10 text-xs text-amber-200/80">
+              <span>📲</span> <span>สแกน QR รับรูปทันที</span>
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start">
             <button
               onClick={onStart}
-              className="group relative px-9 py-5 rounded-2xl font-bold text-lg transition-all duration-300 shadow-2xl hover:scale-105 active:scale-95 flex items-center gap-3 overflow-hidden cursor-pointer border border-amber-400/30"
+              className="group relative px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-300 shadow-2xl hover:scale-105 active:scale-95 flex items-center gap-3 overflow-hidden cursor-pointer border border-amber-400/40 ring-2 ring-amber-500/20"
               style={{
                 background: isCowboy
-                  ? 'linear-gradient(135deg, #d97706, #78350f)'
+                  ? 'linear-gradient(135deg, #d97706 0%, #b45309 50%, #78350f 100%)'
                   : `linear-gradient(135deg, ${accentColor}, #6366f1)`,
                 color: '#ffffff',
                 boxShadow: isCowboy
-                  ? '0 10px 40px rgba(217, 119, 6, 0.45)'
+                  ? '0 12px 45px rgba(217, 119, 6, 0.55)'
                   : `0 10px 40px ${accentColor}40`
               }}
             >
-              <div className="absolute inset-0 bg-white/15 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <Camera className="w-6 h-6 transition-transform group-hover:rotate-12" />
-              <span>{buttonText}</span>
+              <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Camera className="w-6 h-6 transition-transform group-hover:rotate-12 text-yellow-200" />
+              <span className="font-serif tracking-wide">{buttonText}</span>
               <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
             </button>
 
-            <div className="flex items-center gap-2 text-xs text-zinc-300 glass px-4 py-2.5 rounded-xl border border-white/10">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              กล้อง HD พร้อมถ่ายรูป
-            </div>
+            <span className="text-xs text-amber-200/60 font-mono tracking-wider hidden sm:block">
+              TOUCH SCREEN OR CLICK TO START
+            </span>
           </div>
         </div>
 
-        {/* Right Column: 3D Floating Interactive Photo Strips Showcase (Cowboy Themed) */}
-        <div className="relative w-full max-w-[320px] h-[450px] flex items-center justify-center animate-float-slow">
+        {/* Right Column: 3D Floating Interactive Photo Strips Showcase */}
+        <div className="relative w-full max-w-[340px] h-[460px] flex items-center justify-center animate-float-slow">
           {/* Background Ambient Glow */}
           <div 
-            className="absolute w-72 h-72 rounded-full blur-3xl opacity-40 -z-10" 
+            className="absolute w-80 h-80 rounded-full blur-3xl opacity-45 -z-10" 
             style={{ background: `radial-gradient(circle, ${accentColor}, #ea580c)` }} 
           />
 
           {/* Left Tilt Strip (Desert Parchment / Wild West Card) */}
-          <div className="absolute w-36 bg-[#fefce8] p-2.5 rounded-2xl shadow-2xl transform -rotate-12 -translate-x-12 translate-y-3 transition-transform duration-500 hover:rotate-0 hover:scale-105 z-10 border border-amber-200/80 cursor-pointer">
+          <div className="absolute w-38 bg-[#fefce8] p-3 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] transform -rotate-12 -translate-x-14 translate-y-3 transition-transform duration-500 hover:rotate-0 hover:scale-105 z-10 border border-amber-200/90 cursor-pointer">
             <div className="space-y-1.5">
-              <div className="h-24 bg-amber-100 rounded-xl overflow-hidden relative shadow-inner">
+              <div className="h-26 bg-amber-100 rounded-xl overflow-hidden relative shadow-inner">
                 <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80" alt="Preview 1" className="w-full h-full object-cover sepia-[0.3]" />
-                <span className="absolute top-1 right-1 text-sm drop-shadow">🤠</span>
+                <span className="absolute top-1.5 right-1.5 text-base drop-shadow">🤠</span>
               </div>
-              <div className="h-24 bg-amber-100 rounded-xl overflow-hidden relative shadow-inner">
+              <div className="h-26 bg-amber-100 rounded-xl overflow-hidden relative shadow-inner">
                 <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80" alt="Preview 2" className="w-full h-full object-cover sepia-[0.2]" />
-                <span className="absolute bottom-1 left-1 text-sm drop-shadow">⭐</span>
+                <span className="absolute bottom-1.5 left-1.5 text-base drop-shadow">⭐</span>
               </div>
             </div>
-            <div className="pt-2 text-center text-[9px] font-bold tracking-widest text-amber-950 font-serif">
-              WILD WEST
+            <div className="pt-2 text-center text-[10px] font-bold tracking-widest text-amber-950 font-serif">
+              WILD WEST • STUDIO
             </div>
           </div>
 
           {/* Right Tilt Strip (Dark Saddle Leather Card) */}
-          <div className="absolute w-36 bg-[#1c120c] p-2.5 rounded-2xl shadow-2xl transform rotate-6 translate-x-10 -translate-y-3 transition-transform duration-500 hover:rotate-0 hover:scale-105 z-20 border border-amber-500/30 cursor-pointer">
+          <div className="absolute w-38 bg-[#1c120c] p-3 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] transform rotate-6 translate-x-12 -translate-y-3 transition-transform duration-500 hover:rotate-0 hover:scale-105 z-20 border border-amber-500/40 cursor-pointer">
             <div className="space-y-1.5">
-              <div className="h-24 bg-[#2e1c12] rounded-xl overflow-hidden relative shadow-inner">
+              <div className="h-26 bg-[#2e1c12] rounded-xl overflow-hidden relative shadow-inner">
                 <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80" alt="Preview 3" className="w-full h-full object-cover" />
-                <span className="absolute top-1 right-1 text-sm drop-shadow">👢</span>
+                <span className="absolute top-1.5 right-1.5 text-base drop-shadow">👢</span>
               </div>
-              <div className="h-24 bg-[#2e1c12] rounded-xl overflow-hidden relative shadow-inner">
+              <div className="h-26 bg-[#2e1c12] rounded-xl overflow-hidden relative shadow-inner">
                 <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80" alt="Preview 4" className="w-full h-full object-cover" />
-                <span className="absolute bottom-1 left-1 text-sm drop-shadow">🌵</span>
+                <span className="absolute bottom-1.5 left-1.5 text-base drop-shadow">🌵</span>
               </div>
             </div>
-            <div className="pt-2 text-center text-[9px] font-bold tracking-widest text-amber-400 font-serif">
+            <div className="pt-2 text-center text-[10px] font-bold tracking-widest text-amber-400 font-serif">
               WANTED • YEEHAW
             </div>
           </div>
@@ -1525,126 +1574,198 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
   );
 }
 
-function SetupView({ config, setConfig, customLayouts, onNext, onBack }) {
+function SetupView({ config, setConfig, customLayouts, landingConfig, onNext, onBack }) {
   const layouts = getAvailableLayouts(customLayouts);
+  const currentTheme = landingConfig?.theme || 'cowboy';
+  const isCowboy = currentTheme === 'cowboy';
 
   return (
-    <div className="flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full">
-      <header className="flex items-center justify-between py-4 mb-8 border-b border-zinc-800">
-        <button onClick={onBack} className="p-2 hover:bg-zinc-900 rounded-full transition-colors">
-          <X className="w-6 h-6" />
-        </button>
-        <h2 className="text-xl font-semibold">ตั้งค่าก่อนถ่าย</h2>
-        <div className="w-10" />
+    <div className="flex-1 min-h-screen flex flex-col p-4 sm:p-8 max-w-5xl mx-auto w-full relative z-10 select-none">
+      <AuroraBackground theme={currentTheme} bgImage={landingConfig?.bgImage} />
+
+      {/* Top Header with Step Flow */}
+      <header className="relative z-10 flex flex-wrap items-center justify-between gap-4 border-b border-amber-500/20 pb-4 mb-6">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="p-2.5 glass hover:bg-white/10 rounded-full transition-colors text-zinc-300 hover:text-white cursor-pointer border border-white/10">
+            <X className="w-5 h-5" />
+          </button>
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Step 1 of 3</span>
+            <h2 className="text-xl sm:text-2xl font-bold text-white font-serif">
+              {isCowboy ? '🤠 เลือกรูปแบบและสไตล์คาวบอย' : 'เลือกรูปแบบและโทนสี'}
+            </h2>
+          </div>
+        </div>
+
+        {/* Stepper Pills */}
+        <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-500/25 border border-amber-500/40 text-amber-300 font-semibold shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            1. สไตล์
+          </div>
+          <span className="text-zinc-600">→</span>
+          <div className="px-3.5 py-1.5 rounded-full glass text-zinc-400 border border-white/5">
+            2. ถ่ายรูป
+          </div>
+          <span className="text-zinc-600">→</span>
+          <div className="px-3.5 py-1.5 rounded-full glass text-zinc-400 border border-white/5">
+            3. ตกแต่ง
+          </div>
+        </div>
       </header>
 
-      <div className="grid md:grid-cols-2 gap-12 flex-1">
-        <div className="space-y-6">
-          <div className="flex items-center gap-2 text-lg font-medium border-b border-zinc-800 pb-2 text-amber-500">
-            <Layers className="w-5 h-5" />
-            <h3 className="text-zinc-50">เลือกรูปแบบกรอบ (Layout)</h3>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {layouts.map(layout => (
-              <button
-                key={layout.id}
-                onClick={() => setConfig({ ...config, layout })}
-                className={`flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all ${
-                  config.layout.id === layout.id 
-                    ? 'border-amber-500 bg-amber-500/10 shadow-[0_0_20px_rgba(245,158,11,0.2)]' 
-                    : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
-                }`}
-              >
-                <div
-                  className="w-12 bg-zinc-800 rounded-sm mb-4 border border-zinc-700 p-1 relative overflow-hidden"
-                  style={getLayoutAspectStyle(layout)}
-                >
-                  {isCustomLayout(layout) ? (
-                    layout.slots.map((slot, index) => (
-                      <div
-                        key={slot.id ?? index}
-                        className="absolute bg-zinc-600 rounded-sm"
-                        style={{
-                          left: `${slot.x}%`,
-                          top: `${slot.y}%`,
-                          width: `${slot.w}%`,
-                          height: `${slot.h}%`,
-                        }}
-                      />
-                    ))
-                  ) : (
-                    <div className={`w-full h-full flex flex-col gap-1 ${layout.cols === 2 ? 'grid grid-cols-2' : ''}`}>
-                      {Array.from({ length: getLayoutShotCount(layout) }).map((_, index) => (
-                        <div key={index} className="flex-1 bg-zinc-600 rounded-sm w-full h-full" />
-                      ))}
+      {/* Bento Grid */}
+      <div className="relative z-10 grid md:grid-cols-3 gap-6 flex-1">
+        {/* Left Column: Layouts & Timer (2-Cols on MD) */}
+        <div className="md:col-span-2 space-y-6">
+          {/* Layout Picker */}
+          <div className="glass-card rounded-3xl p-6 space-y-4 border border-amber-500/20">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2 text-base font-bold text-amber-100 font-serif">
+                <Layers className="w-5 h-5 text-amber-400" />
+                <span>รูปแบบกรอบรูป (Layout)</span>
+              </div>
+              <span className="text-xs text-amber-200/60">แตะเพื่อเลือก</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {layouts.map(layout => {
+                const isSelected = config.layout.id === layout.id;
+                const shotCount = getLayoutShotCount(layout);
+                return (
+                  <button
+                    key={layout.id}
+                    onClick={() => setConfig({ ...config, layout })}
+                    className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-amber-500 bg-amber-500/20 shadow-[0_0_25px_rgba(217,119,6,0.35)] scale-[1.02] ring-1 ring-amber-400/40'
+                        : 'border-white/10 glass hover:border-amber-500/30 hover:scale-[1.01]'
+                    }`}
+                  >
+                    <div
+                      className="w-12 bg-zinc-900 rounded-md mb-3 border border-white/15 p-1 relative overflow-hidden shadow-inner flex items-center justify-center"
+                      style={getLayoutAspectStyle(layout)}
+                    >
+                      {isCustomLayout(layout) ? (
+                        layout.slots.map((slot, index) => (
+                          <div
+                            key={slot.id ?? index}
+                            className="absolute bg-amber-500/60 rounded-[2px]"
+                            style={{
+                              left: `${slot.x}%`,
+                              top: `${slot.y}%`,
+                              width: `${slot.w}%`,
+                              height: `${slot.h}%`,
+                            }}
+                          />
+                        ))
+                      ) : (
+                        <div className={`w-full h-full flex flex-col gap-0.5 ${layout.cols === 2 ? 'grid grid-cols-2' : ''}`}>
+                          {Array.from({ length: shotCount }).map((_, index) => (
+                            <div key={index} className="flex-1 bg-amber-500/60 rounded-[2px] w-full h-full" />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <span className="font-medium">{layout.name}</span>
-                <span className="text-xs text-zinc-500 mt-1">ถ่าย {getLayoutShotCount(layout)} ช็อต</span>
-              </button>
-            ))}
+                    <span className="font-semibold text-xs sm:text-sm text-zinc-100">{layout.name}</span>
+                    <span className="text-[11px] text-amber-200/70 mt-0.5 font-mono">{shotCount} ช็อต</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Countdown Timer Selector */}
+          <div className="glass-card rounded-3xl p-6 space-y-3 border border-amber-500/20">
+            <div className="flex items-center gap-2 text-sm font-bold text-amber-200 font-serif">
+              <span>⏱️</span>
+              <span>เวลานับถอยหลังต่อช็อต (Countdown Timer)</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { time: 3, label: '3 วินาที (ด่วน)' },
+                { time: 5, label: '5 วินาที (แนะนำ 🤠)' },
+                { time: 10, label: '10 วินาที (โพสจุใจ)' }
+              ].map(t => (
+                <button
+                  key={t.time}
+                  onClick={() => setConfig({ ...config, timer: t.time })}
+                  className={`py-3.5 px-3 rounded-2xl border-2 transition-all font-bold text-xs sm:text-sm cursor-pointer ${
+                    config.timer === t.time
+                      ? 'border-amber-500 bg-amber-500/25 text-amber-300 shadow-[0_0_20px_rgba(217,119,6,0.3)] ring-1 ring-amber-400/40'
+                      : 'border-white/10 glass text-zinc-400 hover:border-white/20 hover:text-zinc-200'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="flex items-center gap-2 text-lg font-medium border-b border-zinc-800 pb-2 text-orange-400">
-            <Wand2 className="w-5 h-5" />
-            <h3 className="text-zinc-50">เลือกฟิลเตอร์</h3>
+        {/* Right Column: Filters (1-Col) */}
+        <div className="glass-card rounded-3xl p-6 space-y-4 flex flex-col border border-amber-500/20">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div className="flex items-center gap-2 text-base font-bold text-amber-100 font-serif">
+              <Wand2 className="w-5 h-5 text-amber-400" />
+              <span>โทนสีภาพ (Filters)</span>
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            {FILTERS.map(filter => (
-              <button
-                key={filter.id}
-                onClick={() => setConfig({ ...config, filter })}
-                className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                  config.filter.id === filter.id 
-                    ? 'border-orange-500 bg-orange-500/10 shadow-[0_0_20px_rgba(249,115,22,0.2)]' 
-                    : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
-                }`}
-              >
-                <div 
-                  className="w-12 h-12 rounded-full bg-[url('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80')] bg-cover bg-center ring-2 ring-zinc-800"
-                  style={{ filter: filter.css }}
-                />
-                <span className="text-sm font-medium">{filter.name}</span>
-              </button>
-            ))}
+
+          <div className="space-y-2.5 flex-1 overflow-y-auto pr-1">
+            {FILTERS.map(filter => {
+              const isSelected = config.filter.id === filter.id;
+              return (
+                <button
+                  key={filter.id}
+                  onClick={() => setConfig({ ...config, filter })}
+                  className={`w-full flex items-center gap-3.5 p-3 rounded-2xl border-2 transition-all text-left cursor-pointer ${
+                    isSelected
+                      ? 'border-amber-500 bg-amber-500/20 shadow-[0_0_20px_rgba(217,119,6,0.3)] ring-1 ring-amber-400/40'
+                      : 'border-white/10 glass hover:border-white/20'
+                  }`}
+                >
+                  <div
+                    className="w-12 h-12 rounded-xl bg-[url('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80')] bg-cover bg-center ring-2 ring-white/10 shrink-0 shadow-md"
+                    style={{ filter: filter.css }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm text-zinc-100 flex items-center gap-2">
+                      <span>{filter.name}</span>
+                      {filter.id === 'sepia' && <span className="text-[10px] bg-amber-500/25 text-amber-300 px-1.5 py-0.5 rounded font-bold font-serif">🌟 คาวบอยแท้</span>}
+                    </div>
+                    <div className="text-[11px] text-zinc-400 truncate">
+                      {filter.id === 'none' && 'สีธรรมชาติ คมชัดสมจริง'}
+                      {filter.id === 'grayscale' && 'ขาวดำคลาสสิก Wanted Poster'}
+                      {filter.id === 'sepia' && 'วินเทจเรโทร สไตล์คาวบอยย้อนยุค'}
+                      {filter.id === 'warm' && 'อบอุ่น ละมุนตา แดดทะเลทราย'}
+                      {filter.id === 'cool' && 'โทนเย็น ผิวสว่างสดใส'}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      <div className="mt-8 space-y-4">
-        <div className="flex items-center gap-2 text-lg font-medium border-b border-zinc-800 pb-2 text-blue-400">
-          <span className="text-xl">⏱️</span>
-          <h3 className="text-zinc-50">เวลานับถอยหลัง (Timer)</h3>
-        </div>
-        <div className="flex gap-4">
-          {[3, 5, 10].map(t => (
-            <button
-              key={t}
-              onClick={() => setConfig({ ...config, timer: t })}
-              className={`flex-1 py-4 rounded-xl border-2 transition-all font-bold ${
-                config.timer === t 
-                  ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_15px_rgba(59,130,246,0.2)] text-blue-400' 
-                  : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 text-zinc-300'
-              }`}
-            >
-              {t} วินาที
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="py-8 flex justify-end">
-        <button 
-          onClick={onNext}
-          className="px-10 py-5 bg-amber-700 hover:bg-amber-600 text-white rounded-full text-xl font-bold transition-all hover:scale-105 active:scale-95 flex items-center gap-3 shadow-[0_0_30px_rgba(217,119,6,0.4)]"
+      {/* Bottom Action Bar */}
+      <footer className="relative z-10 pt-6 flex items-center justify-between">
+        <button
+          onClick={onBack}
+          className="px-6 py-3.5 rounded-2xl text-sm font-semibold glass hover:bg-white/10 transition-colors cursor-pointer border border-white/10"
         >
-          <Camera className="w-6 h-6" />
-          เข้าตู้ถ่ายรูป
+          ← กลับหน้าแรก
         </button>
-      </div>
+        <button
+          onClick={onNext}
+          className="px-8 py-4 bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 hover:from-amber-500 hover:to-yellow-500 text-white rounded-2xl text-base font-bold transition-all hover:scale-105 active:scale-95 flex items-center gap-3 shadow-xl shadow-amber-600/40 cursor-pointer border border-amber-400/40 font-serif"
+        >
+          <Camera className="w-5 h-5 text-yellow-200" />
+          <span>เข้าตู้ถ่ายรูปเลย (ENTER BOOTH)</span>
+          <span>→</span>
+        </button>
+      </footer>
     </div>
   );
 }
@@ -1690,7 +1811,6 @@ function BoothView({ config, onComplete, onCancel }) {
     if (!videoRef.current || !recordCanvasRef.current) return;
     const video = videoRef.current;
     const canvas = recordCanvasRef.current;
-    // Safe fallback dimensions if video is not fully initialized
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
     const ctx = canvas.getContext('2d');
@@ -1719,7 +1839,7 @@ function BoothView({ config, onComplete, onCancel }) {
       recorderRef.current.ondataavailable = e => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
-      recorderRef.current.start(500); // Record in 500ms chunks to ensure data availability
+      recorderRef.current.start(500);
     } catch(e) {
       console.error("Recording not supported", e);
     }
@@ -1749,16 +1869,18 @@ function BoothView({ config, onComplete, onCancel }) {
       setStatus('countdown');
       for (let i = config.timer; i > 0; i--) {
         setCount(i);
+        playAudioTone('beep');
         await wait(1000);
       }
       setStatus('flashing');
-      await wait(150);
+      playAudioTone('shutter');
+      await wait(180);
       
       // Capture
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
       const ctx = canvas.getContext('2d');
       if (config.filter.css) ctx.filter = config.filter.css;
       ctx.translate(canvas.width, 0);
@@ -1770,8 +1892,8 @@ function BoothView({ config, onComplete, onCancel }) {
       setCaptured([...currentCaptured]);
       
       if (currentShot < shotCount - 1) {
-         setStatus('idle'); // Just to show idle UI briefly
-         await wait(1000); // 1 second break between shots
+         setStatus('idle');
+         await wait(1000);
       }
     }
     
@@ -1781,87 +1903,120 @@ function BoothView({ config, onComplete, onCancel }) {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-zinc-950 p-2 sm:p-6 relative">
-      {/* Physical Machine Frame */}
-      <div className="flex-1 bg-black rounded-[2rem] border-[12px] border-zinc-800 shadow-[0_0_50px_rgba(0,0,0,0.8)_inset,0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden flex flex-col">
+    <div className="flex-1 min-h-screen flex flex-col bg-zinc-950 p-2 sm:p-6 relative select-none">
+      {/* Saloon Camera Viewfinder Kiosk */}
+      <div className="flex-1 bg-black rounded-3xl border-4 border-amber-950/80 shadow-[0_0_60px_rgba(0,0,0,0.9)] relative overflow-hidden flex flex-col">
         
-        {/* Screen Glare */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none z-30" />
+        {/* Screen Glare Reflection */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-amber-400/5 via-transparent to-transparent pointer-events-none z-30" />
         
-        {/* Top Camera Hole indicator */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-4 h-4 bg-black border-2 border-zinc-700 rounded-full z-40 flex items-center justify-center">
-          <div className="w-1.5 h-1.5 bg-blue-500/50 rounded-full" />
+        {/* Top Camera Sensor Indicator */}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-4 h-4 bg-black border-2 border-amber-600/60 rounded-full z-40 flex items-center justify-center">
+          <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
         </div>
 
-        <header className="absolute top-6 left-6 right-6 z-40 flex justify-between items-center">
-          <button onClick={onCancel} className="p-3 bg-black/60 hover:bg-black/90 backdrop-blur-md rounded-full text-white transition-all hover:scale-110 active:scale-90 border border-white/10 shadow-xl">
+        {/* Viewfinder Top Bar */}
+        <header className="absolute top-5 left-5 right-5 z-40 flex justify-between items-center pointer-events-auto">
+          <button 
+            onClick={onCancel} 
+            className="p-3 bg-black/60 hover:bg-black/90 backdrop-blur-md rounded-full text-white transition-all hover:scale-110 active:scale-95 border border-white/10 shadow-xl cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
-          <div className="bg-black/60 backdrop-blur-md px-6 py-2 rounded-full text-sm font-bold border border-white/10 shadow-xl text-white">
-            ช็อตที่ {shotIndex + 1} / {shotCount}
+
+          {/* Central REC Indicator */}
+          <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full border border-amber-500/30 shadow-xl text-xs font-mono tracking-wider">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+            <span className="text-red-400 font-bold">REC TIMELAPSE • SALOON CAM</span>
+          </div>
+
+          {/* Shot Count Badge */}
+          <div className="bg-black/60 backdrop-blur-md px-5 py-2 rounded-full text-xs sm:text-sm font-bold border border-amber-500/30 shadow-xl text-amber-200 font-mono">
+            SHOT {shotIndex + 1} / {shotCount}
           </div>
         </header>
 
-        <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-zinc-900">
+        {/* Camera Feed Container */}
+        <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-zinc-950">
           <video 
             ref={videoRef} autoPlay playsInline muted 
             className="w-full h-full object-cover -scale-x-100"
             style={{ filter: config.filter.css }}
           />
-        <canvas ref={canvasRef} className="hidden" />
-        <canvas ref={recordCanvasRef} className="hidden" />
+          <canvas ref={canvasRef} className="hidden" />
+          <canvas ref={recordCanvasRef} className="hidden" />
 
-        {/* Camera UI Overlay (Corners) */}
-        <div className="absolute inset-8 border-2 border-white/10 rounded-2xl pointer-events-none z-20">
-          <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white/60 rounded-tl-xl" />
-          <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white/60 rounded-tr-xl" />
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white/60 rounded-bl-xl" />
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white/60 rounded-br-xl" />
+          {/* Rule of Thirds Grid Lines */}
+          <div className="absolute inset-0 pointer-events-none grid grid-cols-3 grid-rows-3 opacity-20">
+            <div className="border-r border-b border-amber-200" />
+            <div className="border-r border-b border-amber-200" />
+            <div className="border-b border-amber-200" />
+            <div className="border-r border-b border-amber-200" />
+            <div className="border-r border-b border-amber-200" />
+            <div className="border-b border-amber-200" />
+            <div className="border-r border-b border-amber-200" />
+            <div className="border-r border-b border-amber-200" />
+            <div />
+          </div>
+
+          {/* Antique Brass Corner Framing Marks */}
+          <div className="absolute inset-6 sm:inset-10 pointer-events-none z-20">
+            <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-amber-400/80 rounded-tl-lg" />
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-amber-400/80 rounded-tr-lg" />
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-amber-400/80 rounded-bl-lg" />
+            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-amber-400/80 rounded-br-lg" />
+          </div>
+
+          {/* Shutter Flash Animation Screen */}
+          {status === 'flashing' && (
+            <div className="absolute inset-0 bg-white z-50 pointer-events-none opacity-100 animate-[pulse_0.15s_ease-out]" />
+          )}
+
+          {/* Large Countdown Overlay */}
+          {status === 'countdown' && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] z-40 pointer-events-none">
+              <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-full border-4 border-amber-400/80 flex items-center justify-center bg-black/60 backdrop-blur-md shadow-[0_0_60px_rgba(245,158,11,0.5)] animate-pulse">
+                <span className="text-7xl sm:text-9xl font-black text-amber-300 font-serif drop-shadow-[0_0_30px_rgba(245,158,11,0.9)]">
+                  {count}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Idle Shutter Trigger Button */}
+          {status === 'idle' && (
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-40">
+              <button 
+                onClick={startSequence}
+                className="group relative w-24 h-24 rounded-full border-4 border-amber-500 bg-amber-600/30 p-2 flex items-center justify-center hover:bg-amber-600/50 hover:scale-110 active:scale-95 transition-all duration-300 shadow-[0_0_40px_rgba(217,119,6,0.7)] cursor-pointer"
+              >
+                <div className="w-full h-full bg-gradient-to-tr from-amber-600 to-yellow-500 rounded-full group-hover:from-amber-500 group-hover:to-yellow-400 group-hover:shadow-[0_0_25px_rgba(245,158,11,0.8)] transition-all duration-300 shadow-inner" />
+              </button>
+              <span className="text-amber-100 text-xs sm:text-sm font-bold tracking-wider bg-black/70 px-5 py-2 rounded-full backdrop-blur-md border border-amber-500/30 animate-pulse font-serif">
+                🤠 แตะเพื่อเริ่มถ่ายรูป ({shotCount} ช็อต)
+              </span>
+            </div>
+          )}
         </div>
-
-        {status === 'idle' && (
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 z-50">
-            <button 
-              onClick={startSequence}
-              className="w-24 h-24 rounded-full border-4 border-red-500 bg-red-600/30 p-2 flex items-center justify-center hover:bg-red-600/50 hover:scale-110 hover:shadow-[0_0_40px_rgba(239,68,68,0.8)] active:scale-90 transition-all duration-300 group shadow-[0_0_30px_rgba(239,68,68,0.4)]"
-            >
-              <div className="w-full h-full bg-red-500 rounded-full group-hover:bg-red-400 group-hover:shadow-[0_0_20px_rgba(255,255,255,0.8)] transition-all duration-300 shadow-inner shadow-black/30" />
-            </button>
-            <span className="text-white text-sm font-bold tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,1)] bg-black/60 px-5 py-2 rounded-full backdrop-blur-md border border-white/10 animate-pulse">
-              📸 แตะเพื่อเริ่มถ่ายรูป
-            </span>
-          </div>
-        )}
-
-        {status === 'countdown' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <span className="text-[200px] font-black text-white drop-shadow-[0_0_40px_rgba(0,0,0,0.8)] animate-pulse">
-              {count}
-            </span>
-          </div>
-        )}
-
-        {status === 'flashing' && (
-          <div className="absolute inset-0 bg-white z-50 pointer-events-none opacity-100 animate-[pulse_0.15s_ease-out]" />
-        )}
-      </div>
-
       </div>
 
       {/* Captured Preview Strip at Bottom */}
-      <div className="h-32 mt-4 bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex gap-3 overflow-x-auto items-center justify-center">
+      <div className="h-28 sm:h-32 mt-3 glass rounded-2xl p-2.5 flex gap-3 overflow-x-auto items-center justify-center z-10 border border-amber-500/20">
         {Array.from({ length: shotCount }).map((_, i) => (
           <div 
             key={i} 
-            className={`h-full aspect-[3/4] rounded-lg border-2 overflow-hidden bg-zinc-900 transition-all duration-300 ${
-              i === shotIndex ? 'border-amber-500 scale-105 shadow-lg shadow-amber-500/20' : 'border-zinc-800'
+            className={`h-full aspect-[3/4] rounded-xl border-2 overflow-hidden bg-zinc-900 transition-all duration-300 relative ${
+              i === shotIndex && status !== 'idle'
+                ? 'border-amber-500 scale-105 shadow-lg shadow-amber-500/40 ring-2 ring-amber-400/50' 
+                : 'border-white/10'
             }`}
           >
             {captured[i] ? (
-              <img src={captured[i]} alt={`Shot ${i+1}`} className="w-full h-full object-cover" />
+              <img src={captured[i]} alt={`Shot ${i+1}`} className="w-full h-full object-cover animate-in fade-in" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-zinc-700">
-                <ImageIcon className="w-6 h-6" />
+              <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 gap-1">
+                <ImageIcon className="w-5 h-5 opacity-40 text-amber-500/40" />
+                <span className="text-[10px] font-mono text-zinc-500">ช็อต {i + 1}</span>
               </div>
             )}
           </div>
