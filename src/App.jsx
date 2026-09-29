@@ -3,7 +3,7 @@ import {
   Camera, Image as ImageIcon, Wand2, Download, QrCode, 
   Settings, Smile, ChevronRight, Sparkles, RefreshCcw, 
   X, Layers, Share2, Loader2, AlertCircle, ShieldAlert,
-  Plus, Trash2, ImagePlus, Paintbrush, MonitorSmartphone, LayoutTemplate, Square, Move, Maximize2, Copy, Grid3X3, Type
+  Plus, Trash2, ImagePlus, Paintbrush, MonitorSmartphone, LayoutTemplate, Square, Move, Maximize2, Copy, Grid3X3, Type, Printer, Smartphone
 } from 'lucide-react';
 import QRCode from 'qrcode';
 
@@ -2738,99 +2738,132 @@ function ShareView({ image, videoBlob, cloudConfig, landingConfig, onDone }) {
     doc.close();
   };
 
-  return (
+    return (
     <div 
-      className="flex-1 flex items-center justify-center p-4 md:p-6 relative overflow-y-auto text-amber-50"
-      style={{ background: `linear-gradient(to bottom, ${landingConfig?.bgColor1 || '#1a0e04'}, ${landingConfig?.bgColor2 || '#3d1f00'})` }}
+      className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 relative overflow-y-auto min-h-screen text-amber-50"
     >
-      <div className="absolute inset-0 pointer-events-none opacity-30 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]" />
+      <AuroraBackground />
+      <div className="absolute inset-0 pointer-events-none opacity-40 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-600/10 via-zinc-950/80 to-zinc-950" />
       
-      <div className="relative z-10 max-w-5xl w-full grid md:grid-cols-2 gap-8 md:gap-12 items-center py-10">
+      <div className="relative z-10 max-w-5xl w-full grid md:grid-cols-2 gap-8 md:gap-14 items-center py-6 sm:py-10">
         
-        {/* Left: Result Image and Video */}
+        {/* Left: Result Image and Video Showcase */}
         <div className="flex flex-col items-center gap-6">
-          <div className="print-container relative p-2 bg-zinc-900 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-zinc-800 md:rotate-[-2deg] hover:rotate-0 transition-transform duration-500">
-            <img src={printableImage || image} alt="Final Print" className="print-image max-h-[50vh] md:max-h-[55vh] object-contain rounded-xl shadow-inner pointer-events-auto" />
-            <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none rounded-2xl" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold tracking-widest uppercase">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" /> SALOON MASTERPIECE
+          </div>
+
+          <div className="print-container relative p-3 sm:p-4 bg-zinc-900/90 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] border-2 border-amber-500/30 md:rotate-[-2deg] hover:rotate-0 transition-transform duration-500 group">
+            {/* Antique Brass Corner Brackets */}
+            <div className="absolute -top-1.5 -left-1.5 w-5 h-5 border-t-2 border-l-2 border-amber-400 rounded-tl pointer-events-none" />
+            <div className="absolute -top-1.5 -right-1.5 w-5 h-5 border-t-2 border-r-2 border-amber-400 rounded-tr pointer-events-none" />
+            <div className="absolute -bottom-1.5 -left-1.5 w-5 h-5 border-b-2 border-l-2 border-amber-400 rounded-bl pointer-events-none" />
+            <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 border-b-2 border-r-2 border-amber-400 rounded-br pointer-events-none" />
+
+            <img 
+              src={printableImage || image} 
+              alt="Final Print" 
+              className="print-image max-h-[50vh] md:max-h-[56vh] object-contain rounded-2xl shadow-inner pointer-events-auto transition-transform group-hover:scale-[1.01]" 
+            />
+            <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/5 via-transparent to-white/10 pointer-events-none rounded-3xl" />
           </div>
           
           {videoBlob && (
-            <div className="relative p-2 bg-zinc-900 rounded-2xl border border-zinc-800 w-full max-w-[250px] shadow-xl md:rotate-[3deg]">
-              <div className="absolute -top-3 -right-3 bg-amber-500 text-black text-xs font-bold px-2 py-1 rounded-lg transform rotate-12 z-10">Timelapse 🚀</div>
-               <video 
-                  src={URL.createObjectURL(videoBlob)} 
-                  autoPlay loop muted playsInline 
-                  className="w-full rounded-xl"
-                  ref={v => { if(v) v.playbackRate = 2.0; }}
-               />
-               <button onClick={downloadVideo} className="absolute bottom-4 right-4 p-3 bg-black/60 rounded-full text-white hover:bg-amber-500 transition-colors backdrop-blur-md hover:scale-110">
-                 <Download className="w-5 h-5" />
-               </button>
+            <div className="relative p-2.5 bg-zinc-900/90 rounded-2xl border-2 border-amber-600/40 w-full max-w-[280px] shadow-2xl md:rotate-[2.5deg] hover:rotate-0 transition-all duration-300">
+              <div className="absolute -top-3.5 -right-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 text-[11px] font-black tracking-wide px-3 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-10">
+                <span>🎞️ TIMELAPSE REEL</span>
+              </div>
+              <video 
+                src={URL.createObjectURL(videoBlob)} 
+                autoPlay loop muted playsInline 
+                className="w-full rounded-xl shadow-inner"
+                ref={v => { if(v) v.playbackRate = 2.0; }}
+              />
+              <button 
+                onClick={downloadVideo} 
+                className="absolute bottom-4 right-4 p-3 bg-zinc-950/80 hover:bg-amber-500 text-amber-300 hover:text-zinc-950 rounded-full transition-all backdrop-blur-md hover:scale-110 shadow-lg border border-amber-500/30 cursor-pointer"
+                title="ดาวน์โหลดวิดีโอ Timelapse"
+              >
+                <Download className="w-5 h-5 stroke-[2.5]" />
+              </button>
             </div>
           )}
-          <p className="text-zinc-500 text-xs mt-2 hidden md:block">แตะค้างที่รูปภาพ หากต้องการเซฟด้วยตัวเอง</p>
+          <p className="text-zinc-400 text-xs mt-1 hidden md:block">💡 แตะค้างที่รูปภาพ หากต้องการเซฟด้วยตัวเอง</p>
         </div>
 
         {/* Right: Actions */}
-        <div className="space-y-6 md:space-y-8 flex flex-col items-center md:items-start text-center md:text-left">
+        <div className="space-y-6 md:space-y-7 flex flex-col items-center md:items-start text-center md:text-left">
           <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold tracking-wider uppercase mb-3">
+              ⭐ YEEHAW! PHOTO READY
+            </div>
             <h2 
-              className="text-3xl md:text-4xl font-extrabold mb-3 drop-shadow-md"
-              style={{ color: landingConfig?.accentColor || '#d4a055' }}
+              className="font-serif text-3xl sm:text-4xl md:text-5xl font-black mb-3 tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 drop-shadow-[0_2px_12px_rgba(245,158,11,0.25)]"
             >
-              {landingConfig?.shareTitle || 'รูปภาพของคุณพร้อมแล้ว!'}
+              {landingConfig?.shareTitle || "รูปภาพของคุณพร้อมแล้ว!"}
             </h2>
-            <p className="text-amber-200/80 text-base md:text-lg">
-              {landingConfig?.shareSubtitle || 'สแกนคิวอาร์โค้ดเพื่อเซฟลงมือถือได้เลย หรือกดปุ่มดาวน์โหลดด้านล่าง'}
+            <p className="text-amber-100/80 text-sm sm:text-base leading-relaxed">
+              {landingConfig?.shareSubtitle || "สแกนคิวอาร์โค้ดเพื่อเซฟลงมือถือได้เลย หรือกดปุ่มดาวน์โหลด HD ด้านล่าง"}
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
+          <div className="flex flex-col sm:flex-row gap-3.5 w-full max-w-md">
             <button 
               onClick={handleDownload}
-              className="flex-1 py-4 bg-amber-700 text-amber-50 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors shadow-xl"
-              style={{ backgroundColor: landingConfig?.accentColor, color: '#1a0e04' }}
+              className="flex-1 py-4 px-6 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-zinc-950 rounded-2xl font-black text-lg flex items-center justify-center gap-2.5 shadow-[0_0_25px_rgba(245,158,11,0.35)] hover:shadow-[0_0_35px_rgba(245,158,11,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
             >
-              <Download className="w-5 h-5" />
-              ดาวน์โหลด HD
+              <Download className="w-5 h-5 stroke-[2.5]" />
+              <span>ดาวน์โหลด HD</span>
             </button>
             <button 
-              className="flex-1 py-4 bg-black/40 border border-amber-900/50 text-amber-200 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:bg-black/60 transition-colors"
               onClick={handlePrint}
+              className="flex-1 py-4 px-6 bg-zinc-900/80 hover:bg-zinc-800/90 border-2 border-amber-500/40 hover:border-amber-400 text-amber-200 hover:text-amber-100 rounded-2xl font-bold text-lg flex items-center justify-center gap-2.5 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg cursor-pointer backdrop-blur-md"
             >
-              พิมพ์รูป
+              <Printer className="w-5 h-5" />
+              <span>พิมพ์รูป</span>
             </button>
           </div>
           
-          <p className="text-amber-500/80 text-xs w-full max-w-sm text-left px-2">
-            * หากปุ่มดาวน์โหลดไม่ทำงาน ให้แตะค้างที่รูปภาพด้านซ้าย แล้วเลือก "บันทึกรูปภาพ" (Save Image)
+          <p className="text-amber-400/80 text-xs w-full max-w-md text-left px-1">
+            * หากปุ่มดาวน์โหลดไม่ทำงาน ให้แตะค้างที่รูปภาพด้านซ้าย แล้วเลือก <strong>"บันทึกรูปภาพ" (Save Image)</strong>
           </p>
 
-          <div className="w-full max-w-sm bg-black/40 p-5 md:p-6 rounded-2xl border border-amber-900/30 backdrop-blur-md flex flex-col gap-4 shadow-2xl">
+          <div className="w-full max-w-md glass-card p-5 sm:p-6 rounded-3xl border-2 border-amber-500/30 backdrop-blur-xl bg-zinc-900/70 flex flex-col gap-4 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-amber-500/10 to-transparent pointer-events-none" />
+
             {errorMsg && (
-              <div className="text-amber-500 text-xs bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
-                {errorMsg}
+              <div className="text-amber-300 text-xs bg-amber-500/10 p-3 rounded-xl border border-amber-500/30 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                <span className="leading-tight">{errorMsg}</span>
               </div>
             )}
-            <div className="flex items-center gap-4 md:gap-6">
-              <div className="w-24 h-24 md:w-28 md:h-28 bg-white/90 rounded-xl p-2 flex items-center justify-center shrink-0 relative overflow-hidden">
+            <div className="flex items-center gap-4 sm:gap-6">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 bg-white rounded-2xl p-2 flex items-center justify-center shrink-0 relative overflow-hidden ring-2 ring-amber-400/40 shadow-xl">
                 {isUploading && (
-                  <div className="flex flex-col items-center gap-2">
+                  <div className="flex flex-col items-center justify-center gap-1.5 p-2 text-center">
                     <Loader2 className="w-6 h-6 text-amber-600 animate-spin" />
-                    <span className="text-[10px] text-amber-800 font-medium">กำลังอัปโหลด...</span>
+                    <span className="text-[10px] text-zinc-700 font-bold leading-tight">กำลังอัปโหลด...</span>
                   </div>
                 )}
                 {!isUploading && qrCodeUrl && (
                   <img src={qrCodeUrl} alt="QR Code" className="w-full h-full object-contain animate-in fade-in zoom-in duration-500" />
                 )}
+                {!isUploading && !qrCodeUrl && !errorMsg && (
+                  <div className="flex flex-col items-center justify-center text-center p-1 text-zinc-400">
+                    <QrCode className="w-8 h-8 opacity-40 mb-1" />
+                    <span className="text-[9px]">ไม่มี QR</span>
+                  </div>
+                )}
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-base md:text-lg mb-1 flex items-center gap-2 text-amber-100">
-                  <QrCode className="w-5 h-5 text-amber-500" />
+                <div className="inline-flex items-center gap-1.5 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-1">
+                  <Smartphone className="w-3.5 h-3.5" /> MOBILE SCANNER
+                </div>
+                <h3 className="font-serif font-black text-lg sm:text-xl text-amber-100 flex items-center gap-2">
                   สแกนรับรูปภาพ
                 </h3>
-                <p className="text-xs md:text-sm text-amber-200/60 leading-relaxed">
-                  เปิดกล้องมือถือสแกนเพื่อโหลดรูป
+                <p className="text-xs sm:text-sm text-amber-200/70 leading-relaxed mt-1">
+                  เปิดกล้องมือถือสแกนเพื่อรับรูปและวิดีโอต้นฉบับความคมชัดระดับ HD ลงเครื่องทันที
                 </p>
               </div>
             </div>
@@ -2838,9 +2871,10 @@ function ShareView({ image, videoBlob, cloudConfig, landingConfig, onDone }) {
 
           <button 
             onClick={onDone}
-            className="text-amber-500 hover:text-amber-300 transition-colors underline underline-offset-4 mt-2"
+            className="w-full max-w-md py-3.5 px-6 rounded-2xl border border-zinc-700/80 hover:border-amber-500/60 bg-zinc-900/60 hover:bg-zinc-800/80 text-zinc-300 hover:text-amber-200 transition-all font-semibold flex items-center justify-center gap-2.5 shadow-md cursor-pointer group"
           >
-            กลับไปหน้าแรก / ถ่ายใหม่
+            <RefreshCcw className="w-4 h-4 text-amber-400 group-hover:-rotate-180 transition-transform duration-500" />
+            <span>กลับไปหน้าแรก / ถ่ายใหม่ (Saloon Home)</span>
           </button>
         </div>
       </div>
@@ -2850,48 +2884,65 @@ function ShareView({ image, videoBlob, cloudConfig, landingConfig, onDone }) {
 
 function DownloadView() {
   const params = new URLSearchParams(window.location.search);
-  const imgUrl = params.get('img');
-  const vidUrl = params.get('vid');
+  const imgUrl = params.get("img");
+  const vidUrl = params.get("vid");
 
   const downloadFile = async (url, filename) => {
     try {
       const res = await fetch(url);
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = blobUrl;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
     } catch(err) {
-      window.open(url, '_blank');
+      window.open(url, "_blank");
     }
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-zinc-950 p-6 items-center min-h-screen text-center justify-center">
-      <h1 className="text-3xl font-bold text-amber-500 mb-2">🎉 รูปของคุณมาแล้ว!</h1>
-      <p className="text-zinc-400 mb-8">บันทึกรูปและวิดีโอลงมือถือได้เลย</p>
-
-      {imgUrl && (
-        <div className="mb-6 flex flex-col items-center">
-          <img src={imgUrl} className="max-w-full w-64 rounded-xl shadow-2xl mb-4 border-2 border-zinc-800" />
-          <button onClick={() => downloadFile(imgUrl, 'photobooth.jpg')} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-full font-bold text-white shadow-lg flex items-center gap-2">
-            <Download className="w-5 h-5" /> โหลดรูปภาพ
-          </button>
-          <p className="text-xs text-zinc-500 mt-2">หรือแตะค้างที่รูปเพื่อบันทึก</p>
+    <div className="flex-1 flex flex-col bg-zinc-950 p-4 sm:p-6 items-center min-h-screen text-center justify-center relative overflow-hidden">
+      <AuroraBackground />
+      <div className="relative z-10 max-w-md w-full flex flex-col items-center py-8">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold tracking-widest uppercase mb-3">
+          ⭐ SALOON PHOTO BOOTH
         </div>
-      )}
+        <h1 className="font-serif text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 mb-2 drop-shadow">
+          รูปภาพของคุณมาแล้ว!
+        </h1>
+        <p className="text-zinc-400 text-sm mb-6">แตะปุ่มเพื่อดาวน์โหลดรูปและวิดีโอลงมือถือได้เลย 🤠</p>
 
-      {vidUrl && (
-        <div className="mb-6 flex flex-col items-center pt-6 border-t border-zinc-800 w-full max-w-sm">
-          <video src={vidUrl} autoPlay loop muted playsInline className="max-w-full w-48 rounded-xl shadow-2xl mb-4 border-2 border-zinc-800" />
-          <button onClick={() => downloadFile(vidUrl, 'photobooth-timelapse.mp4')} className="px-6 py-3 bg-amber-600 hover:bg-amber-500 rounded-full font-bold text-white shadow-lg flex items-center gap-2">
-            <Download className="w-5 h-5" /> โหลดวิดีโอ Timelapse
-          </button>
-        </div>
-      )}
+        {imgUrl && (
+          <div className="mb-6 flex flex-col items-center w-full glass-card p-4 rounded-3xl border-2 border-amber-500/30 shadow-2xl">
+            <img src={imgUrl} className="max-w-full w-64 rounded-2xl shadow-2xl mb-4 border border-amber-500/20" />
+            <button 
+              onClick={() => downloadFile(imgUrl, "photobooth.jpg")} 
+              className="w-full py-4 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-zinc-950 rounded-2xl font-black text-base shadow-xl flex items-center justify-center gap-2.5 transition-transform active:scale-95 cursor-pointer"
+            >
+              <Download className="w-5 h-5 stroke-[2.5]" /> โหลดรูปภาพความละเอียดสูง
+            </button>
+            <p className="text-xs text-zinc-400 mt-2.5">หรือแตะค้างที่รูปภาพเพื่อกด "บันทึกรูปภาพ"</p>
+          </div>
+        )}
+
+        {vidUrl && (
+          <div className="mb-6 flex flex-col items-center w-full glass-card p-4 rounded-3xl border-2 border-amber-500/30 shadow-2xl">
+            <div className="text-amber-400 text-xs font-bold tracking-wider uppercase mb-2 flex items-center gap-1.5">
+              <span>🎞️ วิดีโอ TIMELAPSE</span>
+            </div>
+            <video src={vidUrl} autoPlay loop muted playsInline className="max-w-full w-52 rounded-2xl shadow-2xl mb-4 border border-amber-500/20" />
+            <button 
+              onClick={() => downloadFile(vidUrl, "photobooth-timelapse.mp4")} 
+              className="w-full py-4 bg-zinc-900/90 hover:bg-zinc-800 text-amber-300 border border-amber-500/40 rounded-2xl font-bold text-base shadow-lg flex items-center justify-center gap-2.5 transition-transform active:scale-95 cursor-pointer"
+            >
+              <Download className="w-5 h-5 stroke-[2.5]" /> โหลดวิดีโอ Timelapse
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
