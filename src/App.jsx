@@ -237,7 +237,7 @@ function LandingView({ onStart, onAdmin, config }) {
 
   return (
     <div 
-      className="flex-1 min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
+      className="photo-home flex-1 min-h-screen flex flex-col items-center justify-center p-6 md:p-10 relative overflow-hidden"
       style={{
         background: config?.bgImage 
           ? `url(${config.bgImage}) center/cover no-repeat` 
@@ -252,7 +252,7 @@ function LandingView({ onStart, onAdmin, config }) {
         }} 
       />
 
-      <div className="absolute inset-4 sm:inset-8 border-4 border-dashed rounded-3xl pointer-events-none opacity-40 z-0" style={{ borderColor: accentColor }} />
+      <div className="absolute inset-4 sm:inset-8 rounded-[2rem] pointer-events-none opacity-40 z-0" style={{ border: `1px solid ${accentColor}` }} />
 
       {config?.showStars !== false && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
@@ -272,44 +272,22 @@ function LandingView({ onStart, onAdmin, config }) {
         </div>
       )}
       
-      <button onClick={onAdmin} className="absolute bottom-4 left-4 p-2 opacity-10 hover:opacity-100 transition-opacity z-20 text-white">
-        <Settings className="w-5 h-5" />
-      </button>
+      <button onClick={onAdmin} className="photo-admin absolute top-7 right-7 z-20 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white/75 hover:text-white"><Settings className="w-4 h-4" /> จัดการบูธ</button>
 
-      <div className="absolute top-1/4 left-10 text-4xl animate-float z-10" style={{ animationDelay: '0s' }}>🌵</div>
-      <div className="absolute bottom-1/4 right-10 text-4xl animate-float z-10" style={{ animationDelay: '1s' }}>👢</div>
-      <div className="absolute top-1/3 right-20 text-5xl animate-sway z-10" style={{ animationDelay: '0.5s' }}>🤠</div>
-      <div className="absolute bottom-1/3 left-20 text-3xl animate-float z-10" style={{ animationDelay: '1.5s' }}>🐎</div>
-
-      <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mt-12">
-        <h1 
-          className="text-5xl md:text-7xl font-extrabold tracking-wider mb-6 font-serif"
-          style={{ 
-            color: accentColor,
-            textShadow: '2px 2px 0px #3d1f00, 4px 4px 0px rgba(0,0,0,0.5), 0 0 20px rgba(212,160,85,0.4)'
-          }}
-        >
-          {title}
-        </h1>
-        
-        <p className="text-xl md:text-2xl mb-12 max-w-lg leading-relaxed font-medium" style={{ color: '#FFF8DC', textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}>
-          {subtitle}
-        </p>
-        
-        <button 
-          onClick={onStart}
-          className="group relative inline-flex items-center justify-center gap-3 px-10 py-5 rounded-full text-xl font-bold transition-all hover:scale-105 active:scale-95 animate-glow-pulse border-2 overflow-hidden"
-          style={{ 
-            backgroundColor: '#3d1f00',
-            color: accentColor,
-            borderColor: accentColor
-          }}
-        >
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")` }} />
-          <span className="relative z-10 drop-shadow-md">{buttonText}</span>
-          <ChevronRight className="w-6 h-6 relative z-10 transition-transform group-hover:translate-x-1" />
-        </button>
-      </div>
+      <main className="photo-hero relative z-10 grid w-full max-w-6xl items-center gap-12 py-16 md:grid-cols-[1.05fr_.95fr] md:py-20">
+        <div className="text-center md:text-left">
+          <div className="photo-eyebrow mx-auto mb-6 flex w-fit items-center gap-2 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[.18em] md:mx-0"><span className="photo-live-dot" /> Instant photo studio</div>
+          <h1 className="photo-title mb-6 text-5xl font-black leading-[.98] tracking-tight md:text-7xl" style={{ color: accentColor, textShadow: '0 10px 50px rgba(0,0,0,.35)' }}>{title}</h1>
+          <p className="mx-auto mb-9 max-w-lg text-lg leading-relaxed text-white/65 md:mx-0 md:text-xl">{subtitle}</p>
+          <button onClick={onStart} className="photo-start group inline-flex items-center justify-center gap-3 rounded-2xl px-8 py-4 text-lg font-bold transition-all hover:-translate-y-1 md:px-9 md:py-5 md:text-xl" style={{ backgroundColor: accentColor, color: '#15110c', borderColor: accentColor }}><span>{buttonText}</span><ChevronRight className="w-6 h-6 transition-transform group-hover:translate-x-1" /></button>
+          <div className="mt-9 flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-white/45 md:justify-start"><span>01 · เลือกเลย์เอาต์</span><span>02 · ถ่ายภาพ</span><span>03 · แต่งแล้วแชร์</span></div>
+        </div>
+        <div className="photo-hero-art relative mx-auto w-full max-w-[480px]" aria-hidden="true">
+          <div className="photo-art-glow" /><div className="photo-print photo-print-back"><div className="photo-print-image photo-print-image-two" /><span>GOOD TIMES</span></div>
+          <div className="photo-print photo-print-front"><div className="photo-print-image" /><span>{config?.brandText || 'STUDIO BOOTH'}</span></div>
+          <div className="photo-art-sticker sticker-star">✦</div><div className="photo-art-sticker sticker-heart">♥</div><div className="photo-art-caption"><span>YOUR MOMENT</span><b>Made to keep.</b></div>
+        </div>
+      </main>
     </div>
   );
 }
@@ -1028,7 +1006,7 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
                     </div>
                   )}
                   {(previewLayout.texts || []).map(t => <div key={t.id} className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-bold" style={{ left: `${t.x}%`, top: `${t.y}%`, color: t.color, fontSize: `${Math.max(4, t.size * 0.8)}px`, zIndex: 30 }}>{t.text}</div>)}
-                  {isCustomLayout(previewLayout) && previewLayout.brandText && <div className="absolute bottom-[2%] left-0 right-0 text-center font-bold text-[6px] text-zinc-900">{previewLayout.brandText}</div>}
+                  {isCustomLayout(previewLayout) && <div className="absolute bottom-[2%] left-0 right-0 text-center font-bold text-[6px] text-zinc-900">{previewLayout.brandText || landingConfig?.brandText || 'STUDIO BOOTH'}</div>}
                   
                   {!isCustomLayout(previewLayout) && (
                     <div className="h-[12%] min-h-[20px] w-full flex items-center justify-center shrink-0">
@@ -1881,10 +1859,11 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
           */}
           <div 
             ref={layoutRef}
-            className={`relative overflow-hidden ${customLayout ? '' : config.layout.aspect} flex flex-col transition-colors duration-300 ring-1 ring-white/10 max-h-[calc(100vh-70px)] max-w-full w-auto`}
+            className={`relative overflow-hidden ${customLayout ? '' : config.layout.aspect} flex flex-col transition-colors duration-300 ring-1 ring-white/10 max-w-full max-h-full w-auto`}
               style={{ 
                 background: selectedFrame.type === 'image' ? '#ffffff' : selectedFrame.bg,
                 padding: customLayout ? 0 : `${photoConfig?.padding ?? 5}%`,
+                height: 'min(86vh, 820px)',
                 ...(customLayout ? getLayoutAspectStyle(config.layout) : {})
               }}
           >
@@ -1927,7 +1906,8 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
             {(config.layout.texts || []).map(t => (
               <div key={t.id} className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-bold pointer-events-none z-30" style={{ left: `${t.x}%`, top: `${t.y}%`, color: t.color, fontSize: `${Math.max(12, (t.size || 5) * 0.25)}vw`, fontFamily: `'${fontFamily}', sans-serif` }}>{t.text}</div>
             ))}
-            {customLayout && config.layout.brandText && <div className="absolute bottom-[2%] left-0 right-0 text-center font-bold text-[clamp(12px,2vh,24px)] tracking-widest pointer-events-none z-30" style={{ color: selectedFrame.text, fontFamily: `'${fontFamily}', sans-serif` }}>{config.layout.brandText}</div>}
+            {!customLayout && selectedFrame.type !== 'image' && <div className="h-[10%] min-h-[40px] flex items-center justify-center shrink-0 z-20"><span className="font-bold text-[clamp(12px,2vh,24px)] tracking-widest" style={{ color: selectedFrame.text, fontFamily: `'${fontFamily}', sans-serif` }}>{brandText || 'STUDIO BOOTH'}</span></div>}
+            {customLayout && <div className="absolute bottom-[2%] left-0 right-0 text-center font-bold text-[clamp(12px,2vh,24px)] tracking-widest pointer-events-none z-30" style={{ color: selectedFrame.text, fontFamily: `'${fontFamily}', sans-serif` }}>{config.layout.brandText || brandText || 'STUDIO BOOTH'}</div>}
             
             {/* Frame Overlay Image */}
             {selectedFrame.type === 'image' && (
@@ -1935,7 +1915,7 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
             )}
 
             {/* Draggable Stickers Overlay (inside the layout ref so % positioning works) */}
-            <div className="absolute inset-0 pointer-events-none" style={{ clipPath: 'inset(0 0 0 0)' }}>
+            <div className="absolute inset-0 z-50 pointer-events-none" style={{ clipPath: 'inset(0 0 0 0)' }}>
               <div className="relative w-full h-full pointer-events-auto">
                 {stickers.map(sticker => (
                   <DraggableSticker
