@@ -13,6 +13,28 @@ const LAYOUTS = {
   single: { id: 'single', name: '1 รูป (โพลารอยด์)', shots: 1, cols: 1, aspect: 'aspect-[3/4]', vW: 1200, vH: 1600 },
   strip: { id: 'strip', name: '3 รูป (แนวตั้ง)', shots: 3, cols: 1, aspect: 'aspect-[1/3]', vW: 800, vH: 2400 },
   strip_4: { id: 'strip_4', name: '4 รูป (แนวตั้ง)', shots: 4, cols: 1, aspect: 'aspect-[1/4]', vW: 800, vH: 3200 },
+  scrapbook: {
+    id: 'scrapbook', name: 'สมุดภาพหวานใจ (4 รูป)', shots: 4, cols: 1, aspect: 'aspect-[1/3]', vW: 800, vH: 2400,
+    slots: [
+      { id: 0, x: 13, y: 9, w: 74, h: 17 },
+      { id: 1, x: 13, y: 31, w: 74, h: 17 },
+      { id: 2, x: 13, y: 53, w: 74, h: 17 },
+      { id: 3, x: 13, y: 75, w: 74, h: 17 },
+    ],
+    texts: [
+      { id: 'scrapbook-top', text: '♡  OUR LITTLE MOMENTS  ♡', x: 50, y: 4.5, size: 5, color: '#3978a8' },
+    ],
+    frameId: 'scrapbook_blue',
+    decorations: [
+      { stickerId: 'sp_butterfly', x: 6, y: 20, scale: 0.34, rotation: -12 },
+      { stickerId: 'sp_heart_chrome', x: 94, y: 29, scale: 0.34, rotation: 10 },
+      { stickerId: 'ct_daisy', x: 6, y: 47, scale: 0.32, rotation: -8 },
+      { stickerId: 'sp_star_double', x: 94, y: 54, scale: 0.34, rotation: 8 },
+      { stickerId: 'ct_daisy', x: 6, y: 72, scale: 0.3, rotation: 12 },
+      { stickerId: 'sp_butterfly', x: 94, y: 79, scale: 0.34, rotation: -10 },
+    ],
+    brandText: '♡ PHOTO MEMORIES ♡',
+  },
   grid: { id: 'grid', name: '4 รูป (2x2)', shots: 4, cols: 2, aspect: 'aspect-square', vW: 1600, vH: 1600 },
   grid_6: { id: 'grid_6', name: '6 รูป (2x3)', shots: 6, cols: 2, aspect: 'aspect-[2/3]', vW: 1600, vH: 2400 },
 };
@@ -127,9 +149,9 @@ const drawScrapbookPaper = (ctx, width, height, frame) => {
     ctx.fill();
   };
   const radius = Math.max(10, width * 0.018);
-  for (let i = 0; i < 12; i++) {
-    const x = inset + radius + ((i * 73) % Math.max(1, width - inset * 2 - radius * 2));
-    const y = inset + radius + ((i * 137) % Math.max(1, height - inset * 2 - radius * 2));
+  for (let i = 0; i < 9; i++) {
+    const x = i % 2 ? inset + radius : width - inset - radius;
+    const y = height * (0.08 + i * 0.105);
     drawStar(x, y, radius * (i % 3 === 0 ? 1.1 : 0.65));
   }
   ctx.restore();
@@ -785,7 +807,7 @@ const LAYOUT_TEMPLATES = [
   ]},
 ];
 
-const PREVIEW_LAYOUTS = [LAYOUTS.single, LAYOUTS.strip, LAYOUTS.strip_4];
+const PREVIEW_LAYOUTS = [LAYOUTS.single, LAYOUTS.strip, LAYOUTS.strip_4, LAYOUTS.scrapbook];
 const getPresetOverrideId = (layoutId) => `preset_${layoutId}`;
 const getAvailableLayouts = (customLayouts = []) => {
   const safeLayouts = getSafeCustomLayouts(customLayouts);
@@ -888,6 +910,9 @@ function LayoutEditorTab({ customLayouts = [], setCustomLayouts = () => {}, land
     const layoutData = {
       id: savedId,
       ...(presetId ? { presetOverride: true, sourceLayoutId: presetId } : {}),
+      ...(presetId && PREVIEW_LAYOUTS.find(layout => layout.id === presetId)?.decorations
+        ? { frameId: PREVIEW_LAYOUTS.find(layout => layout.id === presetId).frameId, decorations: PREVIEW_LAYOUTS.find(layout => layout.id === presetId).decorations }
+        : {}),
       name: layoutName,
       vW: canvasSize.vW,
       vH: canvasSize.vH,
@@ -985,10 +1010,15 @@ function LayoutEditorTab({ customLayouts = [], setCustomLayouts = () => {}, land
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {getAvailableLayouts(safeCustomLayouts).filter(layout => PREVIEW_LAYOUTS.some(base => base.id === layout.id)).map(layout => (
               <button key={layout.id} onClick={() => startNewLayout(layout)} className="bg-zinc-800 border border-blue-500/40 rounded-xl p-3 text-left hover:border-green-500 transition-colors">
-                <div className="w-full aspect-[3/4] bg-zinc-900 rounded-lg relative mb-2 overflow-hidden p-2">
-                  <div className={`w-full h-full flex flex-col gap-1 ${layout.cols === 2 ? 'grid grid-cols-2' : ''}`}>
-                    {Array.from({ length: layout.shots }).map((_, index) => <div key={index} className="flex-1 bg-blue-500/30 border border-blue-500/60 rounded-sm" />)}
-                  </div>
+                <div className="w-full aspect-[3/4] rounded-lg relative mb-2 overflow-hidden p-2" style={{ background: DEFAULT_FRAMES.find(frame => frame.id === layout.frameId)?.bg || '#18181b' }}>
+                  {isCustomLayout(layout) ? layout.slots.map((slot, index) => (
+                    <div key={slot.id ?? index} className="absolute bg-blue-500/35 border border-blue-300/70 rounded-sm" style={{ left: `${slot.x}%`, top: `${slot.y}%`, width: `${slot.w}%`, height: `${slot.h}%` }} />
+                  )) : (
+                    <div className={`w-full h-full flex flex-col gap-1 ${layout.cols === 2 ? 'grid grid-cols-2' : ''}`}>
+                      {Array.from({ length: layout.shots }).map((_, index) => <div key={index} className="flex-1 bg-blue-500/30 border border-blue-500/60 rounded-sm" />)}
+                    </div>
+                  )}
+                  {(layout.texts || []).map(text => <span key={text.id} className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[5px] font-bold" style={{ left: `${text.x}%`, top: `${text.y}%`, color: text.color }}>{text.text}</span>)}
                 </div>
                 <span className="text-xs text-zinc-300 font-medium">{layout.name}</span>
               </button>
@@ -1184,6 +1214,8 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
   const [activeTab, setActiveTab] = useState('landing');
   const [previewLayout, setPreviewLayout] = useState(LAYOUTS.strip);
   const [newSticker, setNewSticker] = useState('');
+  const [editingStickerIndex, setEditingStickerIndex] = useState(null);
+  const [editingStickerValue, setEditingStickerValue] = useState('');
   const [newFrameName, setNewFrameName] = useState('');
   const [newFrameColor, setNewFrameColor] = useState('#ff0000');
   const [newFrameTextColor, setNewFrameTextColor] = useState('#ffffff');
@@ -1192,9 +1224,33 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
 
   const addSticker = () => {
     if(newSticker.trim()) {
-      setStickers([...stickers, newSticker.trim()]);
+      setStickers(previous => [...previous, newSticker.trim()]);
       setNewSticker('');
     }
+  };
+
+  const startStickerEdit = (index, sticker) => {
+    setEditingStickerIndex(index);
+    setEditingStickerValue(sticker.startsWith('data:image') ? '' : sticker);
+  };
+
+  const saveStickerEdit = (index) => {
+    const nextValue = editingStickerValue.trim();
+    if (!nextValue) return;
+    setStickers(previous => previous.map((sticker, stickerIndex) => stickerIndex === index ? nextValue : sticker));
+    setEditingStickerIndex(null);
+    setEditingStickerValue('');
+  };
+
+  const replaceStickerImage = (index, dataUrl) => {
+    setStickers(previous => previous.map((sticker, stickerIndex) => stickerIndex === index ? dataUrl : sticker));
+    setEditingStickerIndex(null);
+    setEditingStickerValue('');
+  };
+
+  const removeSticker = (index) => {
+    setStickers(previous => previous.filter((_, stickerIndex) => stickerIndex !== index));
+    setEditingStickerIndex(null);
   };
 
   const handleImageUpload = (e, callback) => {
@@ -1206,7 +1262,7 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
   };
 
   const addImageSticker = (dataUrl) => {
-    setStickers([...stickers, dataUrl]);
+    setStickers(previous => [...previous, dataUrl]);
   };
 
   const addFrame = () => {
@@ -1610,7 +1666,7 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
               <div className="flex gap-2">
                 <input 
                   type="text" value={newSticker} onChange={e => setNewSticker(e.target.value)}
-                  placeholder="ใส่อีโมจิ หรือข้อความ" 
+                  placeholder="พิมพ์ข้อความหรืออีโมจิสติกเกอร์"
                   className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
                 />
                 <button onClick={addSticker} className="bg-indigo-600 hover:bg-indigo-700 px-6 rounded-xl font-bold transition-colors">เพิ่ม</button>
@@ -1625,16 +1681,31 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
               </label>
             </div>
 
-            <div className="grid grid-cols-5 gap-3 mt-4">
+            <p className="text-sm text-zinc-400">รายการนี้เชื่อมกับหน้าตกแต่งรูปโดยตรง แก้ไขหรือลบที่นี่แล้วหน้าใช้งานจะอัปเดตตามทันที</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
               {stickers.map((st, i) => (
-                <div key={i} className="relative aspect-square bg-zinc-800 rounded-xl flex items-center justify-center text-3xl group border border-zinc-700 overflow-hidden">
-                  {st.startsWith('data:image') ? <img src={st} className="w-full h-full object-contain p-2" /> : st}
-                  <button 
-                    onClick={() => setStickers(stickers.filter((_, idx) => idx !== i))}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                  >
-                    <Trash2 className="w-3 h-3 text-white" />
-                  </button>
+                <div key={`${i}_${st.slice(0, 24)}`} className="bg-zinc-800 rounded-xl flex flex-col gap-2 p-3 group border border-zinc-700 min-w-0">
+                  <div className="aspect-square rounded-lg bg-zinc-900 flex items-center justify-center text-4xl overflow-hidden">
+                    {st.startsWith('data:image') ? <img src={st} alt={`Sticker ${i + 1}`} className="w-full h-full object-contain p-2" /> : st}
+                  </div>
+                  {editingStickerIndex === i ? (
+                    <div className="space-y-2">
+                      {!st.startsWith('data:image') && <input value={editingStickerValue} onChange={event => setEditingStickerValue(event.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-white text-sm" aria-label={`แก้ไขสติกเกอร์ ${i + 1}`} />}
+                      <label className="block text-center text-xs text-indigo-300 hover:text-indigo-200 cursor-pointer rounded-lg border border-indigo-500/40 px-2 py-1.5">
+                        {st.startsWith('data:image') ? 'เปลี่ยนไฟล์รูป' : 'แทนที่ด้วยรูป'}
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={event => handleImageUpload(event, dataUrl => replaceStickerImage(i, dataUrl))} />
+                      </label>
+                      <div className="flex gap-2">
+                        {!st.startsWith('data:image') && <button onClick={() => saveStickerEdit(i)} className="flex-1 bg-indigo-600 hover:bg-indigo-500 rounded-lg py-1.5 text-xs font-bold">บันทึก</button>}
+                        <button onClick={() => { setEditingStickerIndex(null); setEditingStickerValue(''); }} className="flex-1 bg-zinc-700 hover:bg-zinc-600 rounded-lg py-1.5 text-xs">ยกเลิก</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button onClick={() => startStickerEdit(i, st)} className="flex-1 bg-zinc-700 hover:bg-indigo-600 rounded-lg py-1.5 text-xs font-semibold">แก้ไข</button>
+                      <button onClick={() => removeSticker(i)} className="px-3 bg-zinc-700 hover:bg-red-600 rounded-lg text-red-300 hover:text-white" aria-label={`ลบสติกเกอร์ ${i + 1}`}><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1736,7 +1807,7 @@ function SetupView({ config, setConfig, customLayouts, landingConfig, onNext, on
                   >
                     <div
                       className="w-12 bg-zinc-900 rounded-md mb-3 border border-white/15 p-1 relative overflow-hidden shadow-inner flex items-center justify-center"
-                      style={getLayoutAspectStyle(layout)}
+                      style={{ ...getLayoutAspectStyle(layout), background: DEFAULT_FRAMES.find(frame => frame.id === layout.frameId)?.bg || '#18181b' }}
                     >
                       {isCustomLayout(layout) ? (
                         layout.slots.map((slot, index) => (
@@ -2381,11 +2452,22 @@ function DraggableSticker({
 }
 
 function EditorView({ config, photos, availableFrames, availableStickers, brandText, fontFamily, finalVideo, photoConfig, onExport, onRetake }) {
-  const [stickers, setStickers] = useState([]);
+  const [stickers, setStickers] = useState(() => (config.layout.decorations || []).flatMap((decoration, index) => {
+    const asset = BUILTIN_STICKERS.find(item => item.id === decoration.stickerId);
+    return asset ? [{
+      id: `layout-decoration-${index}`,
+      content: asset.dataUri,
+      x: decoration.x,
+      y: decoration.y,
+      scale: decoration.scale,
+      rotation: decoration.rotation || 0,
+      flipH: false,
+    }] : [];
+  }));
   const [selectedStickerId, setSelectedStickerId] = useState(null);
   const [activeTab, setActiveTab] = useState('stickers'); 
   const [selectedCategory, setSelectedCategory] = useState('sparkles');
-  const [selectedFrame, setSelectedFrame] = useState(availableFrames[0] || DEFAULT_FRAMES[0]);
+  const [selectedFrame, setSelectedFrame] = useState(() => availableFrames.find(frame => frame.id === config.layout.frameId) || availableFrames[0] || DEFAULT_FRAMES[0]);
   const [isExporting, setIsExporting] = useState(false);
   const customLayout = isCustomLayout(config.layout);
   
@@ -2593,6 +2675,21 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         ctx.fillText(today, vW * 0.04, vH * 0.02);
+      }
+
+      if (customLayout) {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (const text of config.layout.texts || []) {
+          ctx.fillStyle = text.color || selectedFrame.text || '#111827';
+          ctx.font = `bold ${Math.max(vW * 0.018, vW * ((text.size || 4) / 100))}px '${fontFamily}', sans-serif`;
+          ctx.fillText(text.text, (text.x / 100) * vW, (text.y / 100) * vH, vW * 0.9);
+        }
+        if (config.layout.brandText) {
+          ctx.fillStyle = selectedFrame.text || '#111827';
+          ctx.font = `bold ${vW * 0.032}px '${fontFamily}', sans-serif`;
+          ctx.fillText(config.layout.brandText, vW / 2, vH * 0.985, vW * 0.9);
+        }
       }
 
       // 5. Draw Stickers (Mapping % to absolute canvas pixels)

@@ -8,7 +8,7 @@ export const STICKER_CATEGORIES = [
   { id: 'sparkles', name: '✨ วิ้งวับ & Y2K' },
   { id: 'cute', name: '🌸 น่ารัก & ดอกไม้' },
   { id: 'wordart', name: '🔤 ข้อความสุดชิค' },
-  { id: 'classic', name: '👑 คลาสสิก' }
+  { id: 'classic', name: '📥 จากหลังบ้าน' }
 ];
 
 export const BUILTIN_STICKERS = [
