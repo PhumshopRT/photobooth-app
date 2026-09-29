@@ -102,6 +102,21 @@ const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const isCustomLayout = (layout) => Array.isArray(layout?.slots) && layout.slots.length > 0;
 const getLayoutShotCount = (layout) => isCustomLayout(layout) ? layout.slots.length : (layout?.shots || 1);
 const getLayoutAspectStyle = (layout) => ({ aspectRatio: `${layout?.vW || 1200} / ${layout?.vH || 1600}` });
+const getCaptureAspect = (layout, shotIndex = 0, photoConfig = {}) => {
+  if (isCustomLayout(layout)) {
+    const slot = layout.slots[Math.min(shotIndex, layout.slots.length - 1)];
+    return (slot.w * layout.vW) / (slot.h * layout.vH);
+  }
+  const vW = layout?.vW || 1200;
+  const vH = layout?.vH || 1600;
+  const padding = vW * ((photoConfig.padding ?? 5) / 100);
+  const spacing = vW * ((photoConfig.spacing ?? 5) / 100);
+  const cols = layout?.cols || 1;
+  const rows = Math.ceil(getLayoutShotCount(layout) / cols);
+  const slotW = (vW - padding * 2 - spacing * (cols - 1)) / cols;
+  const slotH = (vH - padding - vH * 0.1 - spacing * (rows - 1)) / rows;
+  return slotW / slotH;
+};
 const getSafeCustomLayouts = (layouts) => (
   Array.isArray(layouts)
     ? layouts.filter(layout => (
@@ -178,6 +193,25 @@ const drawImageCover = (ctx, img, x, y, width, height) => {
   }
 
   ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
+};
+
+const drawVideoCover = (ctx, video, x, y, width, height) => {
+  const sourceWidth = video.videoWidth || width;
+  const sourceHeight = video.videoHeight || height;
+  const sourceAspect = sourceWidth / sourceHeight;
+  const targetAspect = width / height;
+  let cropWidth = sourceWidth;
+  let cropHeight = sourceHeight;
+  let cropX = 0;
+  let cropY = 0;
+  if (sourceAspect > targetAspect) {
+    cropWidth = sourceHeight * targetAspect;
+    cropX = (sourceWidth - cropWidth) / 2;
+  } else {
+    cropHeight = sourceWidth / targetAspect;
+    cropY = (sourceHeight - cropHeight) / 2;
+  }
+  ctx.drawImage(video, cropX, cropY, cropWidth, cropHeight, x, y, width, height);
 };
 
 // --- AUDIO TONE SYNTHESIZER ---
@@ -501,6 +535,7 @@ export default function App() {
       {view === 'booth' && (
         <BoothView 
           config={config} 
+          photoConfig={photoConfig}
           onComplete={(captured, video) => { setPhotos(captured); setFinalVideo(video); setView('edit'); }} 
           onCancel={() => setView('setup')}
         />
@@ -1214,6 +1249,7 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
   const [activeTab, setActiveTab] = useState('landing');
   const [previewLayout, setPreviewLayout] = useState(LAYOUTS.strip);
   const [newSticker, setNewSticker] = useState('');
+  const [stickerSearch, setStickerSearch] = useState('');
   const [editingStickerIndex, setEditingStickerIndex] = useState(null);
   const [editingStickerValue, setEditingStickerValue] = useState('');
   const [newFrameName, setNewFrameName] = useState('');
@@ -1221,6 +1257,9 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
   const [newFrameTextColor, setNewFrameTextColor] = useState('#ffffff');
   const safeCustomLayouts = getSafeCustomLayouts(customLayouts);
   const availableLayouts = getAvailableLayouts(customLayouts);
+  const visibleStickerEntries = stickers
+    .map((sticker, index) => ({ sticker, index }))
+    .filter(({ sticker, index }) => !stickerSearch.trim() || (sticker.startsWith('data:image') ? `รูปภาพสติกเกอร์ ${index + 1}` : sticker).toLocaleLowerCase().includes(stickerSearch.trim().toLocaleLowerCase()));
 
   const addSticker = () => {
     if(newSticker.trim()) {
@@ -1346,6 +1385,20 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
           </button>
         </div>
       </header>
+
+      <div className="max-w-6xl mx-auto w-full grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {[
+          { label: 'สติกเกอร์', value: stickers.length, color: 'text-indigo-300', detail: 'รายการที่จัดการได้' },
+          { label: 'กรอบภาพ', value: frames.length, color: 'text-fuchsia-300', detail: 'พร้อมใช้ในหน้าแต่งภาพ' },
+          { label: 'เลย์เอาต์', value: availableLayouts.length, color: 'text-green-300', detail: 'ต้นแบบและแบบที่บันทึก' },
+          { label: 'การบันทึก', value: 'อัตโนมัติ', color: 'text-amber-300', detail: 'เก็บในเบราว์เซอร์นี้' },
+        ].map(card => (
+          <div key={card.label} className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+            <div className="flex items-center justify-between gap-2"><span className="text-sm text-zinc-400">{card.label}</span><span className={`text-xl font-black ${card.color}`}>{card.value}</span></div>
+            <p className="text-xs text-zinc-500 mt-1">{card.detail}</p>
+          </div>
+        ))}
+      </div>
 
       <div className="flex overflow-x-auto gap-2 mb-8 pb-2 max-w-6xl mx-auto w-full border-b border-zinc-800">
         <button onClick={() => setActiveTab('landing')} className={`flex items-center gap-2 px-4 py-3 rounded-t-xl font-bold transition-colors whitespace-nowrap ${activeTab === 'landing' ? 'bg-zinc-800 text-amber-400 border-b-2 border-amber-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'}`}><Paintbrush className="w-4 h-4"/> หน้าแรก</button>
@@ -1682,8 +1735,9 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
             </div>
 
             <p className="text-sm text-zinc-400">รายการนี้เชื่อมกับหน้าตกแต่งรูปโดยตรง แก้ไขหรือลบที่นี่แล้วหน้าใช้งานจะอัปเดตตามทันที</p>
+            <input value={stickerSearch} onChange={event => setStickerSearch(event.target.value)} placeholder="ค้นหาข้อความหรือสติกเกอร์รูปภาพ" className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500" />
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
-              {stickers.map((st, i) => (
+              {visibleStickerEntries.map(({ sticker: st, index: i }) => (
                 <div key={`${i}_${st.slice(0, 24)}`} className="bg-zinc-800 rounded-xl flex flex-col gap-2 p-3 group border border-zinc-700 min-w-0">
                   <div className="aspect-square rounded-lg bg-zinc-900 flex items-center justify-center text-4xl overflow-hidden">
                     {st.startsWith('data:image') ? <img src={st} alt={`Sticker ${i + 1}`} className="w-full h-full object-contain p-2" /> : st}
@@ -1709,6 +1763,7 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
                 </div>
               ))}
             </div>
+            {visibleStickerEntries.length === 0 && <div className="text-center text-zinc-500 border border-dashed border-zinc-700 rounded-xl p-8">ไม่พบสติกเกอร์ที่ค้นหา</div>}
           </div>
         )}
         
@@ -1933,19 +1988,31 @@ function SetupView({ config, setConfig, customLayouts, landingConfig, onNext, on
   );
 }
 
-function BoothView({ config, onComplete, onCancel }) {
+function BoothView({ config, photoConfig, onComplete, onCancel }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const recordCanvasRef = useRef(null);
   const recorderRef = useRef(null);
   const requestRef = useRef(null);
   const chunksRef = useRef([]);
-  const [stream, setStream] = useState(null);
+  const streamRef = useRef(null);
+  const [viewportSize, setViewportSize] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
   const [status, setStatus] = useState('idle'); 
   const [count, setCount] = useState(3);
   const [shotIndex, setShotIndex] = useState(0);
   const [captured, setCaptured] = useState([]);
   const shotCount = getLayoutShotCount(config.layout);
+  const cameraAspect = getCaptureAspect(config.layout, shotIndex, photoConfig);
+  const maxCameraHeight = Math.max(180, viewportSize.height - 300);
+  const maxCameraWidth = Math.max(180, viewportSize.width - 48);
+  const cameraHeight = Math.min(maxCameraHeight, maxCameraWidth / cameraAspect);
+  const cameraWidth = cameraHeight * cameraAspect;
+
+  useEffect(() => {
+    const updateViewport = () => setViewportSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
 
   useEffect(() => {
     async function startCamera() {
@@ -1954,7 +2021,7 @@ function BoothView({ config, onComplete, onCancel }) {
           video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: false 
         });
-        setStream(mediaStream);
+        streamRef.current = mediaStream;
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
         }
@@ -1965,7 +2032,7 @@ function BoothView({ config, onComplete, onCancel }) {
     }
     startCamera();
     return () => {
-      if (stream) stream.getTracks().forEach(track => track.stop());
+      streamRef.current?.getTracks().forEach(track => track.stop());
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1974,8 +2041,16 @@ function BoothView({ config, onComplete, onCancel }) {
     if (!videoRef.current || !recordCanvasRef.current) return;
     const video = videoRef.current;
     const canvas = recordCanvasRef.current;
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    const captureAspect = getCaptureAspect(config.layout, 0, photoConfig);
+    const sourceWidth = video.videoWidth || 1280;
+    const sourceHeight = video.videoHeight || 720;
+    if (sourceWidth / sourceHeight > captureAspect) {
+      canvas.height = sourceHeight;
+      canvas.width = Math.round(sourceHeight * captureAspect);
+    } else {
+      canvas.width = sourceWidth;
+      canvas.height = Math.round(sourceWidth / captureAspect);
+    }
     const ctx = canvas.getContext('2d');
     
     const render = () => {
@@ -1983,7 +2058,7 @@ function BoothView({ config, onComplete, onCancel }) {
       if (config.filter.css) ctx.filter = config.filter.css;
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      drawVideoCover(ctx, video, 0, 0, canvas.width, canvas.height);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       requestRef.current = requestAnimationFrame(render);
     };
@@ -2042,13 +2117,21 @@ function BoothView({ config, onComplete, onCancel }) {
       // Capture
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth || 1280;
-      canvas.height = video.videoHeight || 720;
+      const captureAspect = getCaptureAspect(config.layout, currentShot, photoConfig);
+      const sourceWidth = video.videoWidth || 1280;
+      const sourceHeight = video.videoHeight || 720;
+      if (sourceWidth / sourceHeight > captureAspect) {
+        canvas.height = sourceHeight;
+        canvas.width = Math.round(sourceHeight * captureAspect);
+      } else {
+        canvas.width = sourceWidth;
+        canvas.height = Math.round(sourceWidth / captureAspect);
+      }
       const ctx = canvas.getContext('2d');
       if (config.filter.css) ctx.filter = config.filter.css;
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      drawVideoCover(ctx, video, 0, 0, canvas.width, canvas.height);
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
       
       currentCaptured.push(imgData);
@@ -2066,9 +2149,9 @@ function BoothView({ config, onComplete, onCancel }) {
   };
 
   return (
-    <div className="flex-1 min-h-screen flex flex-col bg-zinc-950 p-2 sm:p-6 relative select-none">
+    <div className="h-[100dvh] min-h-[420px] flex flex-col bg-zinc-950 p-2 sm:p-6 relative select-none overflow-hidden">
       {/* Saloon Camera Viewfinder Kiosk */}
-      <div className="flex-1 bg-black rounded-3xl border-4 border-amber-950/80 shadow-[0_0_60px_rgba(0,0,0,0.9)] relative overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 bg-black rounded-3xl border-4 border-amber-950/80 shadow-[0_0_60px_rgba(0,0,0,0.9)] relative overflow-hidden flex flex-col">
         
         {/* Screen Glare Reflection */}
         <div className="absolute inset-0 bg-gradient-to-tr from-amber-400/5 via-transparent to-transparent pointer-events-none z-30" />
@@ -2100,10 +2183,11 @@ function BoothView({ config, onComplete, onCancel }) {
         </header>
 
         {/* Camera Feed Container */}
-        <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-zinc-950">
+        <div className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden bg-zinc-950">
+          <div className="relative shrink-0 overflow-hidden rounded-2xl border border-amber-500/35 shadow-[0_0_50px_rgba(0,0,0,0.65)] bg-black" style={{ width: `${cameraWidth}px`, height: `${cameraHeight}px` }}>
           <video 
             ref={videoRef} autoPlay playsInline muted 
-            className="w-full h-full object-cover -scale-x-100"
+            className="absolute inset-0 w-full h-full object-cover -scale-x-100"
             style={{ filter: config.filter.css }}
           />
           <canvas ref={canvasRef} className="hidden" />
@@ -2160,19 +2244,21 @@ function BoothView({ config, onComplete, onCancel }) {
               </span>
             </div>
           )}
+          </div>
         </div>
       </div>
 
       {/* Captured Preview Strip at Bottom */}
-      <div className="h-28 sm:h-32 mt-3 glass rounded-2xl p-2.5 flex gap-3 overflow-x-auto items-center justify-center z-10 border border-amber-500/20">
+      <div className="h-28 sm:h-32 mt-3 shrink-0 glass rounded-2xl p-2.5 flex gap-3 overflow-x-auto items-center justify-center z-10 border border-amber-500/20">
         {Array.from({ length: shotCount }).map((_, i) => (
           <div 
             key={i} 
-            className={`h-full aspect-[3/4] rounded-xl border-2 overflow-hidden bg-zinc-900 transition-all duration-300 relative ${
+            className={`h-full rounded-xl border-2 overflow-hidden bg-zinc-900 transition-all duration-300 relative shrink-0 ${
               i === shotIndex && status !== 'idle'
                 ? 'border-amber-500 scale-105 shadow-lg shadow-amber-500/40 ring-2 ring-amber-400/50' 
                 : 'border-white/10'
             }`}
+            style={{ aspectRatio: getCaptureAspect(config.layout, i, photoConfig) }}
           >
             {captured[i] ? (
               <img src={captured[i]} alt={`Shot ${i+1}`} className="w-full h-full object-cover animate-in fade-in" />
@@ -2741,7 +2827,7 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
   };
 
   return (
-    <div className="flex-1 flex flex-col md:flex-row bg-zinc-950 relative overflow-hidden" onClick={() => setSelectedStickerId(null)}>
+    <div className="h-[100dvh] min-h-0 flex flex-col md:flex-row bg-zinc-950 relative overflow-hidden" onClick={() => setSelectedStickerId(null)}>
       <AuroraBackground />
       <div className="absolute inset-0 pointer-events-none opacity-30 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-600/10 via-zinc-950/80 to-zinc-950" />
 
@@ -2801,16 +2887,15 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
       </div>
 
       {/* Main Canvas Area (Photo Layout Container) */}
-      <div className="flex-1 flex items-center justify-center p-3 sm:p-6 md:p-8 overflow-hidden relative z-10">
+      <div className="flex-1 min-h-0 flex items-center justify-center p-2 sm:p-4 md:p-8 overflow-hidden relative z-10">
         <div className="relative max-w-full max-h-full flex items-center justify-center shadow-[0_20px_60px_rgba(0,0,0,0.9)] overflow-visible">
           
           <div 
             ref={layoutRef}
-            className={`relative overflow-hidden ${customLayout ? '' : config.layout.aspect} flex flex-col transition-colors duration-300 ring-2 ring-amber-500/30 rounded-2xl max-w-full max-h-full w-auto`}
+            className={`relative overflow-hidden ${customLayout ? '' : config.layout.aspect} flex flex-col transition-colors duration-300 ring-2 ring-amber-500/30 rounded-2xl max-w-full max-h-full w-auto h-[min(52dvh,680px)] md:h-[min(84dvh,780px)]`}
             style={{ 
               background: selectedFrame.type === 'image' ? '#ffffff' : selectedFrame.bg,
               padding: customLayout ? 0 : `${photoConfig?.padding ?? 5}%`,
-              height: 'min(84vh, 780px)',
               ...(customLayout ? getLayoutAspectStyle(config.layout) : {})
             }}
           >
@@ -2895,7 +2980,7 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
 
       {/* Right/Bottom Panel (Controls & Sticker Drawer) */}
       <div 
-        className="w-full md:w-88 bg-zinc-900/95 backdrop-blur-2xl border-t md:border-t-0 md:border-l border-amber-500/20 p-5 sm:p-6 flex flex-col gap-5 z-20 shrink-0 shadow-2xl overflow-y-auto max-h-[45vh] md:max-h-full"
+        className="w-full h-[36dvh] max-h-[36dvh] md:h-auto md:max-h-full md:w-88 bg-zinc-900/95 backdrop-blur-2xl border-t md:border-t-0 md:border-l border-amber-500/20 p-3 sm:p-5 md:p-6 flex flex-col gap-4 md:gap-5 z-20 shrink-0 shadow-2xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {activeTab === 'stickers' && (
