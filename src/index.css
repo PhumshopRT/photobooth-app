@@ -1,5 +1,63 @@
 @import "tailwindcss";
 
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color-scheme: dark;
+  --app-bg: #09090b;
+  --panel: rgba(24, 24, 27, 0.82);
+  --panel-strong: #18181b;
+  --line: rgba(255, 255, 255, 0.1);
+  --muted: #a1a1aa;
+  --accent: #818cf8;
+}
+
+* { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
+*::selection { background: rgba(129, 140, 248, .35); color: white; }
+
+html { background: var(--app-bg); }
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--app-bg);
+  color: #f4f4f5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Shared polish for the existing Tailwind-first UI. */
+.bg-zinc-900\/50 {
+  background: linear-gradient(145deg, rgba(39, 39, 42, .72), rgba(24, 24, 27, .78));
+  border-color: var(--line) !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .16), inset 0 1px rgba(255,255,255,.025);
+  backdrop-filter: blur(16px);
+}
+.bg-zinc-800, .bg-zinc-800\/50 {
+  border-color: rgba(255,255,255,.09);
+}
+input, select, textarea {
+  transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+}
+input:hover, select:hover, textarea:hover { border-color: rgba(129, 140, 248, .45); }
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(129, 140, 248, .9) !important;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, .14);
+}
+button { transition: transform .18s ease, filter .18s ease, box-shadow .18s ease, border-color .18s ease; }
+button:hover { filter: brightness(1.08); }
+button:active { transform: translateY(1px) scale(.99); }
+
+@media (max-width: 640px) {
+  .text-5xl { font-size: 2.5rem; line-height: 1.05; }
+  .text-7xl { font-size: 3.2rem; line-height: 1; }
+}
+
 @theme {
   --color-zinc-50: #fafafa;
   --color-zinc-950: #09090b;
