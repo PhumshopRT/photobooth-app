@@ -14,11 +14,15 @@
 * { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
 *::selection { background: rgba(129, 140, 248, .35); color: white; }
 
-html { background: var(--app-bg); }
+html, body {
+  background: var(--app-bg);
+  overflow-x: hidden;
+  touch-action: pan-y;
+  width: 100%;
+}
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--app-bg);
   color: #f4f4f5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;

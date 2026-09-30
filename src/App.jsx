@@ -764,48 +764,53 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig, preview = false
           </div>
         </div>
 
-        {/* Right Column: 3D Floating Interactive Photo Strips Showcase */}
-        {!preview && <div className="relative w-full max-w-[340px] h-[460px] flex items-center justify-center animate-float-slow">
-          {/* Background Ambient Glow */}
-          <div 
-            className="absolute w-80 h-80 rounded-full blur-3xl opacity-45 -z-10" 
-            style={{ background: `radial-gradient(circle, ${accentColor}, #ea580c)` }} 
-          />
+        {/* Right Column: Grounded Photostrip Showcase (Stable & Non-Floating) */}
+        {!preview && (
+          <div className="relative w-full max-w-[340px] sm:max-w-[370px] h-[400px] flex items-center justify-center">
+            {/* Background Ambient Glow */}
+            <div 
+              className="absolute w-72 h-72 rounded-full blur-3xl opacity-35 -z-10" 
+              style={{ background: `radial-gradient(circle, ${accentColor}, #ea580c)` }} 
+            />
 
-          {/* Left Tilt Strip (Desert Parchment / Wild West Card) */}
-          <div className="absolute w-38 bg-[#fefce8] p-3 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] transform -rotate-12 -translate-x-14 translate-y-3 transition-transform duration-500 hover:rotate-0 hover:scale-105 z-10 border border-amber-200/90 cursor-pointer">
-            <div className="space-y-1.5">
-              <div className="h-26 bg-amber-100 rounded-xl overflow-hidden relative shadow-inner">
-                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80" alt="Preview 1" className="w-full h-full object-cover sepia-[0.3]" />
-                <span className="absolute top-1.5 right-1.5 text-base drop-shadow">🤠</span>
+            {/* Grounded Photostrips (Clean Side-by-Side Display) */}
+            <div className="flex items-center gap-3.5 sm:gap-5">
+              {/* Strip 1: Vintage Cream Strip */}
+              <div className="w-36 sm:w-40 bg-[#fefce8] p-2.5 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.7)] border-2 border-amber-300/80 transition-transform duration-300 hover:scale-[1.02] cursor-pointer">
+                <div className="space-y-1.5">
+                  <div className="h-24 bg-amber-100 rounded-xl overflow-hidden relative shadow-inner">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80" alt="Preview 1" className="w-full h-full object-cover sepia-[0.3]" />
+                    <span className="absolute top-1 right-1 text-sm drop-shadow">🤠</span>
+                  </div>
+                  <div className="h-24 bg-amber-100 rounded-xl overflow-hidden relative shadow-inner">
+                    <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80" alt="Preview 2" className="w-full h-full object-cover sepia-[0.2]" />
+                    <span className="absolute bottom-1 left-1 text-sm drop-shadow">⭐</span>
+                  </div>
+                </div>
+                <div className="pt-2 text-center text-[10px] font-bold tracking-widest text-amber-950 font-serif">
+                  WILD WEST • STUDIO
+                </div>
               </div>
-              <div className="h-26 bg-amber-100 rounded-xl overflow-hidden relative shadow-inner">
-                <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80" alt="Preview 2" className="w-full h-full object-cover sepia-[0.2]" />
-                <span className="absolute bottom-1.5 left-1.5 text-base drop-shadow">⭐</span>
+
+              {/* Strip 2: Dark Leather Strip */}
+              <div className="w-36 sm:w-40 bg-[#1c120c] p-2.5 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.85)] border-2 border-amber-500/50 transition-transform duration-300 hover:scale-[1.02] cursor-pointer">
+                <div className="space-y-1.5">
+                  <div className="h-24 bg-[#2e1c12] rounded-xl overflow-hidden relative shadow-inner">
+                    <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80" alt="Preview 3" className="w-full h-full object-cover" />
+                    <span className="absolute top-1 right-1 text-sm drop-shadow">👢</span>
+                  </div>
+                  <div className="h-24 bg-[#2e1c12] rounded-xl overflow-hidden relative shadow-inner">
+                    <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80" alt="Preview 4" className="w-full h-full object-cover" />
+                    <span className="absolute bottom-1 left-1 text-sm drop-shadow">🌵</span>
+                  </div>
+                </div>
+                <div className="pt-2 text-center text-[10px] font-bold tracking-widest text-amber-400 font-serif">
+                  WANTED • YEEHAW
+                </div>
               </div>
-            </div>
-            <div className="pt-2 text-center text-[10px] font-bold tracking-widest text-amber-950 font-serif">
-              WILD WEST • STUDIO
             </div>
           </div>
-
-          {/* Right Tilt Strip (Dark Saddle Leather Card) */}
-          <div className="absolute w-38 bg-[#1c120c] p-3 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] transform rotate-6 translate-x-12 -translate-y-3 transition-transform duration-500 hover:rotate-0 hover:scale-105 z-20 border border-amber-500/40 cursor-pointer">
-            <div className="space-y-1.5">
-              <div className="h-26 bg-[#2e1c12] rounded-xl overflow-hidden relative shadow-inner">
-                <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80" alt="Preview 3" className="w-full h-full object-cover" />
-                <span className="absolute top-1.5 right-1.5 text-base drop-shadow">👢</span>
-              </div>
-              <div className="h-26 bg-[#2e1c12] rounded-xl overflow-hidden relative shadow-inner">
-                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80" alt="Preview 4" className="w-full h-full object-cover" />
-                <span className="absolute bottom-1.5 left-1.5 text-base drop-shadow">🌵</span>
-              </div>
-            </div>
-            <div className="pt-2 text-center text-[10px] font-bold tracking-widest text-amber-400 font-serif">
-              WANTED • YEEHAW
-            </div>
-          </div>
-        </div>}
+        )}
       </main>
 
       {/* Footer: Admin Settings Trigger */}
@@ -2470,45 +2475,47 @@ function DraggableSticker({
       style={{
         left: `${sticker.x}%`,
         top: `${sticker.y}%`,
-        transform: `translate(-50%, -50%) rotate(${sticker.rotation || 0}deg) scale(${sticker.scale || 1}) scaleX(${isFlipped})`,
+        transform: `translate(-50%, -50%) rotate(${sticker.rotation || 0}deg) scale(${sticker.scale || 1})`,
         transformOrigin: 'center center',
         zIndex: isSelected ? 50 : 10,
-        fontSize: '4.2rem',
+        fontSize: 'clamp(2.2rem, 5.5vw, 4rem)',
         lineHeight: 1,
         touchAction: 'none'
       }}
     >
-      {/* Sticker Content (Image / SVG / Emoji / Text) */}
-      {sticker.content.startsWith('data:image') ? (
-        <img 
-          src={sticker.content} 
-          alt="sticker"
-          className="w-full h-full object-contain pointer-events-none drop-shadow-md select-none" 
-          draggable={false} 
-          style={{ width: '1em', height: '1em' }} 
-        />
-      ) : (
-        <span 
-          style={{ 
-            color: sticker.color || 'inherit', 
-            fontFamily: sticker.fontFamily || 'inherit', 
-            whiteSpace: 'nowrap',
-            display: 'inline-block'
-          }}
-          className="drop-shadow-md select-none"
-        >
-          {sticker.content}
-        </span>
-      )}
+      {/* Sticker Content (Image / SVG / Emoji / Text) with Flip applied ONLY internally */}
+      <div 
+        style={{ transform: `scaleX(${isFlipped})` }} 
+        className="w-full h-full flex items-center justify-center pointer-events-none"
+      >
+        {sticker.content.startsWith('data:image') ? (
+          <img 
+            src={sticker.content} 
+            alt="sticker"
+            className="w-full h-full object-contain pointer-events-none drop-shadow-md select-none" 
+            draggable={false} 
+            style={{ width: '1em', height: '1em' }} 
+          />
+        ) : (
+          <span 
+            style={{ 
+              color: sticker.color || 'inherit', 
+              fontFamily: sticker.fontFamily || 'inherit', 
+              whiteSpace: 'nowrap',
+              display: 'inline-block'
+            }}
+            className="drop-shadow-md select-none"
+          >
+            {sticker.content}
+          </span>
+        )}
+      </div>
 
-      {/* --- SELECTION CONTROLS (DIRECTLY ON STICKER) --- */}
+      {/* --- SELECTION CONTROLS (ALWAYS UN-INVERTED AND SOLID) --- */}
       {isSelected && (
         <>
           {/* 1. Rotate Stalk & Knob (Top Center) */}
-          <div 
-            className="absolute -top-10 left-1/2 -translate-x-1/2 flex flex-col items-center z-50 pointer-events-auto"
-            style={{ transform: `scaleX(${isFlipped})` }}
-          >
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex flex-col items-center z-50 pointer-events-auto">
             <div 
               onMouseDown={handleRotateStart}
               onTouchStart={handleRotateStart}
@@ -2526,7 +2533,6 @@ function DraggableSticker({
             onTouchStart={handleResizeStart}
             className="absolute -bottom-3 -right-3 w-8 h-8 rounded-full bg-amber-500 hover:bg-amber-400 text-zinc-950 flex items-center justify-center cursor-se-resize shadow-xl border-2 border-white transition-transform hover:scale-110 active:scale-95 z-50 pointer-events-auto"
             title="ปรับขนาด (Drag to Scale)"
-            style={{ transform: `scaleX(${isFlipped})` }}
           >
             <Maximize2 className="w-4 h-4 stroke-[2.5]" />
           </div>
@@ -2537,7 +2543,6 @@ function DraggableSticker({
             onTouchStart={(e) => { e.stopPropagation(); onDelete(sticker.id); playAudioTone('tap'); }}
             className="absolute -top-3 -right-3 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-xl border-2 border-white transition-transform hover:scale-110 active:scale-95 z-50 pointer-events-auto cursor-pointer"
             title="ลบสติกเกอร์ (Delete)"
-            style={{ transform: `scaleX(${isFlipped})` }}
           >
             <X className="w-4 h-4 stroke-[3]" />
           </button>
@@ -2548,7 +2553,6 @@ function DraggableSticker({
             onTouchStart={(e) => { e.stopPropagation(); onDuplicate(sticker.id); }}
             className="absolute -top-3 -left-3 w-8 h-8 bg-amber-600 hover:bg-amber-500 text-white rounded-full flex items-center justify-center shadow-xl border-2 border-white transition-transform hover:scale-110 active:scale-95 z-50 pointer-events-auto cursor-pointer"
             title="ทำซ้ำ (Duplicate)"
-            style={{ transform: `scaleX(${isFlipped})` }}
           >
             <Copy className="w-4 h-4 stroke-[2.5]" />
           </button>
@@ -2559,7 +2563,6 @@ function DraggableSticker({
             onTouchStart={(e) => { e.stopPropagation(); onFlip(sticker.id); }}
             className="absolute -bottom-3 -left-3 w-8 h-8 bg-zinc-800 hover:bg-zinc-700 text-amber-300 rounded-full flex items-center justify-center shadow-xl border-2 border-amber-400/80 transition-transform hover:scale-110 active:scale-95 z-50 pointer-events-auto cursor-pointer"
             title="พลิกซ้าย-ขวา (Flip Horizontal)"
-            style={{ transform: `scaleX(${isFlipped})` }}
           >
             <FlipHorizontal className="w-4 h-4 stroke-[2.5]" />
           </button>
@@ -3458,7 +3461,7 @@ function ShareView({ image, videoBlob, cloudConfig, landingConfig, onDone }) {
             <Sparkles className="w-3.5 h-3.5 text-amber-400" /> SALOON MASTERPIECE
           </div>
 
-          <div className="print-container relative p-3 sm:p-4 bg-zinc-900/90 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] border-2 border-amber-500/30 md:rotate-[-2deg] hover:rotate-0 transition-transform duration-500 group">
+          <div className="print-container relative p-3 sm:p-4 bg-zinc-900/90 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] border-2 border-amber-500/30 transition-transform duration-300 group">
             {/* Antique Brass Corner Brackets */}
             <div className="absolute -top-1.5 -left-1.5 w-5 h-5 border-t-2 border-l-2 border-amber-400 rounded-tl pointer-events-none" />
             <div className="absolute -top-1.5 -right-1.5 w-5 h-5 border-t-2 border-r-2 border-amber-400 rounded-tr pointer-events-none" />
@@ -3474,7 +3477,7 @@ function ShareView({ image, videoBlob, cloudConfig, landingConfig, onDone }) {
           </div>
           
           {videoBlob && (
-            <div className="relative p-2.5 bg-zinc-900/90 rounded-2xl border-2 border-amber-600/40 w-full max-w-[280px] shadow-2xl md:rotate-[2.5deg] hover:rotate-0 transition-all duration-300">
+            <div className="relative p-2.5 bg-zinc-900/90 rounded-2xl border-2 border-amber-600/40 w-full max-w-[280px] shadow-2xl transition-all duration-300">
               <div className="absolute -top-3.5 -right-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 text-[11px] font-black tracking-wide px-3 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-10">
                 <span>🎞️ TIMELAPSE REEL</span>
               </div>
