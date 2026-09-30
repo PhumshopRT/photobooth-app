@@ -57,6 +57,40 @@ const DEFAULT_FRAMES = [
 ];
 
 const DEFAULT_STICKERS = ['👑', '✨', '💖', '🎉', '🌸', '😎', '🐱', '🎀', '🎈', '🔥', '💎', '🌈', '🦋'];
+const LANDING_THEME_PRESETS = {
+  cowboy: {
+    title: 'Yeehaw Photo Booth',
+    subtitle: 'ตู้ถ่ายรูปสไตล์คาวบอยตะวันตกสุดพรีเมียม ถ่ายช็อตเท่ๆ พร้อมบันทึกวิดีโอไทม์แลปส์เบื้องหลัง และสแกน QR Code รับรูปทันที! 🤠',
+    buttonText: '🤠 เริ่มถ่ายรูปสไตล์คาวบอย',
+    brandText: 'WILD WEST STUDIO',
+    accentColor: '#d4a055',
+    theme: 'cowboy',
+  },
+  korean: {
+    title: 'Snap Your Best Moments',
+    subtitle: 'บันทึกรอยยิ้มสไตล์เกาหลี พร้อมวิดีโอไทม์แลปส์เบื้องหลัง และดาวน์โหลดผ่าน QR Code ได้ทันที',
+    buttonText: 'แตะเพื่อเริ่มถ่ายรูป ✨',
+    brandText: 'HARU STUDIO',
+    accentColor: '#818cf8',
+    theme: 'korean',
+  },
+  y2k: {
+    title: 'Y2K Cyber Photobooth',
+    subtitle: 'ตู้ถ่ายรูปสุดชิคสไตล์ Y2K กลิ่นอายเรโทร ปรับแต่งสติกเกอร์ได้จุใจ!',
+    buttonText: '⚡ START SHOOTING',
+    brandText: 'Y2K BOOTH',
+    accentColor: '#ec4899',
+    theme: 'y2k',
+  },
+  film: {
+    title: 'Analog Film Darkroom',
+    subtitle: 'สัมผัสบรรยากาศฟิล์มคลาสสิก อบอุ่น โทนสีนุ่มนวลเหนือกาลเวลา',
+    buttonText: '🎞️ เข้าตู้ถ่ายรูปฟิล์ม',
+    brandText: 'RETRO FILM',
+    accentColor: '#d97706',
+    theme: 'film',
+  },
+};
 
 // --- CUSTOM HOOK FOR LOCAL STORAGE ---
 function useLocalStorage(key, initialValue) {
@@ -77,6 +111,10 @@ function useLocalStorage(key, initialValue) {
     }
     return value;
   };
+  const initialValueRef = useRef(initialValue);
+  const mergeValueRef = useRef(getMergedValue);
+  initialValueRef.current = initialValue;
+  mergeValueRef.current = getMergedValue;
 
   const [storedValue, setStoredValue] = useState(() => {
     try {
@@ -86,14 +124,32 @@ function useLocalStorage(key, initialValue) {
       return initialValue;
     }
   });
+  const [storageError, setStorageError] = useState('');
   const setValue = value => {
     try {
       const valueToStore = value instanceof Function ? value(storedValue) : value;
       setStoredValue(getMergedValue(valueToStore));
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {}
+      setStorageError('');
+    } catch (error) {
+      setStorageError(error?.name === 'QuotaExceededError'
+        ? 'พื้นที่จัดเก็บในเบราว์เซอร์เต็ม กรุณาลด/ลบรูปพื้นหลังหรือส่งออกข้อมูลสำรอง'
+        : 'เบราว์เซอร์ปฏิเสธการบันทึก กรุณาอนุญาตการจัดเก็บเว็บไซต์แล้วลองใหม่');
+    }
   };
-  return [storedValue, setValue];
+  useEffect(() => {
+    const syncFromOtherTab = event => {
+      if (event.key !== key) return;
+      try {
+        setStoredValue(event.newValue ? mergeValueRef.current(JSON.parse(event.newValue)) : initialValueRef.current);
+      } catch {
+        // Ignore malformed values from another tab and preserve the current good copy.
+      }
+    };
+    window.addEventListener('storage', syncFromOtherTab);
+    return () => window.removeEventListener('storage', syncFromOtherTab);
+  }, [key]);
+  return [storedValue, setValue, storageError];
 }
 
 // --- UTILS ---
@@ -280,7 +336,7 @@ const playAudioTone = (type) => {
 };
 
 // --- DYNAMIC AURORA LIQUID BACKGROUND ---
-function AuroraBackground({ theme = 'cowboy', bgImage = '' }) {
+function AuroraBackground({ theme = 'cowboy', bgImage = '', bgColor1 = '#09090b', bgColor2 = '#1a0e04' }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -406,7 +462,7 @@ function AuroraBackground({ theme = 'cowboy', bgImage = '' }) {
   }, [theme, bgImage]);
 
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" style={{ background: bgImage ? undefined : `linear-gradient(145deg, ${bgColor1}, ${bgColor2})` }}>
       {bgImage ? (
         <div 
           className="absolute inset-0 bg-cover bg-center"
@@ -450,6 +506,10 @@ export default function App() {
   // Admin Managed Assets
   const [customFrames, setCustomFrames] = useLocalStorage('studio-booth-frames', DEFAULT_FRAMES);
   const [customStickers, setCustomStickers] = useLocalStorage('studio-booth-stickers', DEFAULT_STICKERS);
+  const [enabledBuiltinStickerIds, setEnabledBuiltinStickerIds] = useLocalStorage(
+    'studio-booth-enabled-stickers',
+    BUILTIN_STICKERS.map(sticker => sticker.id)
+  );
 
   const DEFAULT_LANDING_CONFIG = {
     title: 'Yeehaw Photo Booth',
@@ -466,7 +526,7 @@ export default function App() {
     bgImage: '',
     theme: 'cowboy',
   };
-  const [landingConfig, setLandingConfig] = useLocalStorage('studio-booth-landing', DEFAULT_LANDING_CONFIG);
+  const [landingConfig, setLandingConfig, landingSaveError] = useLocalStorage('studio-booth-landing', DEFAULT_LANDING_CONFIG);
   const DEFAULT_PHOTO_CONFIG = { borderRadius: 0, padding: 5, spacing: 5 };
   const [photoConfig, setPhotoConfig] = useLocalStorage('studio-booth-photo', DEFAULT_PHOTO_CONFIG);
   const [customLayouts, setCustomLayouts] = useLocalStorage('studio-booth-custom-layouts', []);
@@ -515,7 +575,8 @@ export default function App() {
         <AdminView 
           frames={customFrames} setFrames={setCustomFrames}
           stickers={customStickers} setStickers={setCustomStickers}
-          landingConfig={landingConfig} setLandingConfig={setLandingConfig}
+          enabledBuiltinStickerIds={enabledBuiltinStickerIds} setEnabledBuiltinStickerIds={setEnabledBuiltinStickerIds}
+          landingConfig={landingConfig} setLandingConfig={setLandingConfig} landingSaveError={landingSaveError}
           cloudConfig={cloudConfig} setCloudConfig={setCloudConfig}
           photoConfig={photoConfig} setPhotoConfig={setPhotoConfig}
           customLayouts={customLayouts} setCustomLayouts={setCustomLayouts}
@@ -544,7 +605,7 @@ export default function App() {
       {view === 'edit' && (
         <EditorView 
           config={config} photos={photos} 
-          availableFrames={customFrames} availableStickers={customStickers}
+          availableFrames={customFrames} availableStickers={customStickers} enabledBuiltinStickerIds={enabledBuiltinStickerIds}
           brandText={landingConfig?.brandText || 'STUDIO BOOTH'}
           fontFamily={landingConfig?.fontFamily || 'Kanit'}
           photoConfig={photoConfig}
@@ -563,7 +624,7 @@ export default function App() {
 
 // --- VIEWS ---
 
-function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
+function LandingView({ onStart, onAdmin, config, onUpdateConfig, preview = false }) {
   const currentTheme = config?.theme || 'cowboy';
   const isCowboy = currentTheme === 'cowboy';
   const accentColor = config?.accentColor || (isCowboy ? '#d4a055' : currentTheme === 'korean' ? '#818cf8' : currentTheme === 'y2k' ? '#ec4899' : '#d97706');
@@ -574,46 +635,12 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
 
   const selectTheme = (newTheme) => {
     if (!onUpdateConfig) return;
-    const presets = {
-      cowboy: {
-        title: 'Yeehaw Photo Booth',
-        subtitle: 'ตู้ถ่ายรูปสไตล์คาวบอยตะวันตกสุดพรีเมียม ถ่ายช็อตเท่ๆ พร้อมบันทึกวิดีโอไทม์แลปส์เบื้องหลัง และสแกน QR Code รับรูปทันที! 🤠',
-        buttonText: '🤠 เริ่มถ่ายรูปสไตล์คาวบอย',
-        brandText: 'WILD WEST STUDIO',
-        accentColor: '#d4a055',
-        theme: 'cowboy'
-      },
-      korean: {
-        title: 'Snap Your Best Moments',
-        subtitle: 'บันทึกรอยยิ้มสไตล์เกาหลี พร้อมวิดีโอไทม์แลปส์เบื้องหลัง และดาวน์โหลดผ่าน QR Code ได้ทันที',
-        buttonText: 'แตะเพื่อเริ่มถ่ายรูป ✨',
-        brandText: 'HARU STUDIO',
-        accentColor: '#818cf8',
-        theme: 'korean'
-      },
-      y2k: {
-        title: 'Y2K Cyber Photobooth',
-        subtitle: 'ตู้ถ่ายรูปสุดชิคสไตล์ Y2K กลิ่นอายเรโทร ปรับแต่งสติกเกอร์ได้จุใจ!',
-        buttonText: '⚡ START SHOOTING',
-        brandText: 'Y2K BOOTH',
-        accentColor: '#ec4899',
-        theme: 'y2k'
-      },
-      film: {
-        title: 'Analog Film Darkroom',
-        subtitle: 'สัมผัสบรรยากาศฟิล์มคลาสสิก อบอุ่น โทนสีนุ่มนวลเหนือกาลเวลา',
-        buttonText: '🎞️ เข้าตู้ถ่ายรูปฟิล์ม',
-        brandText: 'RETRO FILM',
-        accentColor: '#d97706',
-        theme: 'film'
-      }
-    };
-    onUpdateConfig({ ...config, ...presets[newTheme] });
+    onUpdateConfig({ ...config, ...LANDING_THEME_PRESETS[newTheme] });
   };
 
   return (
-    <div className="flex-1 min-h-screen flex flex-col justify-between p-4 sm:p-8 relative overflow-hidden bg-zinc-950 text-zinc-100 select-none">
-      <AuroraBackground theme={currentTheme} bgImage={config?.bgImage} />
+    <div className={`${preview ? 'w-full h-full min-h-0' : 'flex-1 min-h-screen'} flex flex-col justify-between p-4 sm:p-8 relative overflow-hidden bg-zinc-950 text-zinc-100 select-none`}>
+      <AuroraBackground theme={currentTheme} bgImage={config?.bgImage} bgColor1={config?.bgColor1} bgColor2={config?.bgColor2} />
 
       {/* Floating Cowboy Ambient Charms */}
       {isCowboy && (
@@ -622,8 +649,10 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
           <div className="absolute bottom-[20%] left-[10%] text-2xl sm:text-3xl animate-float opacity-30" style={{ animationDelay: '2s' }}>🐎</div>
           <div className="absolute top-[26%] right-[8%] text-3xl sm:text-4xl animate-sway opacity-30" style={{ animationDelay: '0.8s' }}>🤠</div>
           <div className="absolute bottom-[24%] right-[12%] text-2xl sm:text-3xl animate-float opacity-30" style={{ animationDelay: '2.8s' }}>👢</div>
-          <div className="absolute top-[12%] right-[26%] text-xl sm:text-2xl animate-twinkle opacity-25">⭐</div>
-          <div className="absolute bottom-[14%] left-[30%] text-xl sm:text-2xl animate-twinkle opacity-25" style={{ animationDelay: '1.2s' }}>⭐</div>
+          {config?.showStars !== false && <>
+            <div className="absolute top-[12%] right-[26%] text-xl sm:text-2xl animate-twinkle opacity-25">⭐</div>
+            <div className="absolute bottom-[14%] left-[30%] text-xl sm:text-2xl animate-twinkle opacity-25" style={{ animationDelay: '1.2s' }}>⭐</div>
+          </>}
         </div>
       )}
 
@@ -643,10 +672,10 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
         </div>
 
         {/* Theme Quick Switcher */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl glass border-white/10 text-xs shadow-md">
+        <div className={`${preview ? 'flex flex-wrap justify-center' : 'flex'} items-center gap-1.5 p-1 rounded-2xl glass border-white/10 text-xs shadow-md`}>
           <button
             onClick={() => selectTheme('cowboy')}
-            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+            className={`${preview ? 'px-2 py-1 text-[10px]' : 'px-3.5 py-1.5'} rounded-xl font-bold transition-all cursor-pointer ${
               currentTheme === 'cowboy' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/40 ring-1 ring-amber-400/50' : 'text-zinc-400 hover:text-white'
             }`}
           >
@@ -654,7 +683,7 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
           </button>
           <button
             onClick={() => selectTheme('korean')}
-            className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
+            className={`${preview ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5'} rounded-xl font-medium transition-all cursor-pointer ${
               currentTheme === 'korean' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-zinc-400 hover:text-white'
             }`}
           >
@@ -662,7 +691,7 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
           </button>
           <button
             onClick={() => selectTheme('y2k')}
-            className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
+            className={`${preview ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5'} rounded-xl font-medium transition-all cursor-pointer ${
               currentTheme === 'y2k' ? 'bg-pink-600 text-white shadow-lg shadow-pink-600/30' : 'text-zinc-400 hover:text-white'
             }`}
           >
@@ -670,7 +699,7 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
           </button>
           <button
             onClick={() => selectTheme('film')}
-            className={`px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer ${
+            className={`${preview ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5'} rounded-xl font-medium transition-all cursor-pointer ${
               currentTheme === 'film' ? 'bg-amber-700 text-white shadow-lg shadow-amber-700/30' : 'text-zinc-400 hover:text-white'
             }`}
           >
@@ -680,33 +709,24 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
       </header>
 
       {/* Main Content Hero */}
-      <main className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-center gap-12 w-full max-w-6xl mx-auto my-auto py-8">
+      <main className={`relative z-10 flex-1 flex flex-col ${preview ? 'items-center justify-center gap-4 py-3' : 'md:flex-row items-center justify-center gap-12 py-8'} w-full ${preview ? '' : 'max-w-6xl'} mx-auto my-auto`}>
         {/* Left Column: Heading, Subtitle & CTA */}
-        <div className="flex-1 text-center md:text-left space-y-6 max-w-xl">
+        <div className={`flex-1 text-center ${preview ? 'space-y-3 w-full' : 'md:text-left space-y-6 max-w-xl'}`}>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold glass border border-amber-500/30 text-amber-200/90 shadow-inner">
             <span className="text-amber-400 text-sm">🌵</span>
             <span>SALOON EXPERIENCE • HD PRINT & TIMELAPSE VIDEO 🐎</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] font-serif">
-            {isCowboy || title.includes('Yeehaw') ? (
-              <>
-                <span className="text-amber-50 drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">YEEHAW</span> <br />
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 drop-shadow-[0_4px_30px_rgba(217,119,6,0.65)]">
-                  PHOTO BOOTH
-                </span>
-              </>
-            ) : (
-              <span style={{ color: accentColor }}>{title}</span>
-            )}
+          <h1 className={`${preview ? 'text-3xl' : 'text-4xl sm:text-6xl lg:text-7xl'} font-extrabold tracking-tight leading-[1.08] font-serif`}>
+            <span className={isCowboy ? 'bg-clip-text text-transparent bg-gradient-to-r from-amber-100 via-amber-300 to-orange-400 drop-shadow-[0_4px_24px_rgba(217,119,6,0.45)]' : ''} style={isCowboy ? {} : { color: accentColor }}>{title}</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-amber-100/85 leading-relaxed font-light">
+          <p className={`${preview ? 'text-xs' : 'text-base sm:text-lg'} text-amber-100/85 leading-relaxed font-light`}>
             {subtitle}
           </p>
 
           {/* Three Feature Capsules */}
-          <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-1">
+          <div className={`flex flex-wrap gap-2 justify-center ${preview ? '' : 'md:justify-start'} pt-1`}>
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full glass border border-white/10 text-xs text-amber-200/80">
               <span>⚡</span> <span>คมชัดระดับ Studio HD</span>
             </div>
@@ -718,10 +738,10 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
             </div>
           </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start">
+          <div className={`pt-2 flex ${preview ? 'flex-col' : 'flex-col sm:flex-row'} items-center gap-4 justify-center ${preview ? '' : 'md:justify-start'}`}>
             <button
               onClick={onStart}
-              className="group relative px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-300 shadow-2xl hover:scale-105 active:scale-95 flex items-center gap-3 overflow-hidden cursor-pointer border border-amber-400/40 ring-2 ring-amber-500/20"
+              className={`group relative ${preview ? 'px-5 py-3 text-sm' : 'px-10 py-5 text-lg'} rounded-2xl font-bold transition-all duration-300 shadow-2xl hover:scale-105 active:scale-95 flex items-center gap-3 overflow-hidden cursor-pointer border border-amber-400/40 ring-2 ring-amber-500/20`}
               style={{
                 background: isCowboy
                   ? 'linear-gradient(135deg, #d97706 0%, #b45309 50%, #78350f 100%)'
@@ -733,7 +753,7 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
               }}
             >
               <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <Camera className="w-6 h-6 transition-transform group-hover:rotate-12 text-yellow-200" />
+              <Camera className={`${preview ? 'w-4 h-4' : 'w-6 h-6'} transition-transform group-hover:rotate-12 text-yellow-200`} />
               <span className="font-serif tracking-wide">{buttonText}</span>
               <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
             </button>
@@ -745,7 +765,7 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
         </div>
 
         {/* Right Column: 3D Floating Interactive Photo Strips Showcase */}
-        <div className="relative w-full max-w-[340px] h-[460px] flex items-center justify-center animate-float-slow">
+        {!preview && <div className="relative w-full max-w-[340px] h-[460px] flex items-center justify-center animate-float-slow">
           {/* Background Ambient Glow */}
           <div 
             className="absolute w-80 h-80 rounded-full blur-3xl opacity-45 -z-10" 
@@ -785,11 +805,11 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
               WANTED • YEEHAW
             </div>
           </div>
-        </div>
+        </div>}
       </main>
 
       {/* Footer: Admin Settings Trigger */}
-      <footer className="relative z-10 w-full max-w-6xl mx-auto flex items-center justify-between text-xs text-amber-200/60 pb-2">
+      {!preview && <footer className="relative z-10 w-full max-w-6xl mx-auto flex items-center justify-between text-xs text-amber-200/60 pb-2">
         <button
           onClick={onAdmin}
           className="p-2.5 glass rounded-full opacity-35 hover:opacity-100 transition-all text-amber-400 hover:text-amber-200 hover:scale-110 shadow-lg cursor-pointer border border-amber-500/20"
@@ -798,7 +818,7 @@ function LandingView({ onStart, onAdmin, config, onUpdateConfig }) {
           <Settings className="w-4 h-4" />
         </button>
         <span className="text-[11px] font-mono tracking-wider">TAP ANYWHERE TO INTERACT • WILD WEST BOOTH</span>
-      </footer>
+      </footer>}
     </div>
   );
 }
@@ -1245,13 +1265,14 @@ function LayoutEditorTab({ customLayouts = [], setCustomLayouts = () => {}, land
   );
 }
 
-function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, setLandingConfig, cloudConfig, setCloudConfig, photoConfig, setPhotoConfig, customLayouts, setCustomLayouts, onBack }) {
+function AdminView({ frames, setFrames, stickers, setStickers, enabledBuiltinStickerIds, setEnabledBuiltinStickerIds, landingConfig, setLandingConfig, landingSaveError, cloudConfig, setCloudConfig, photoConfig, setPhotoConfig, customLayouts, setCustomLayouts, onBack }) {
   const [activeTab, setActiveTab] = useState('landing');
   const [previewLayout, setPreviewLayout] = useState(LAYOUTS.strip);
   const [newSticker, setNewSticker] = useState('');
   const [stickerSearch, setStickerSearch] = useState('');
   const [editingStickerIndex, setEditingStickerIndex] = useState(null);
   const [editingStickerValue, setEditingStickerValue] = useState('');
+  const quickEmojis = ['🤠', '⭐', '🌵', '🐎', '💖', '🎀', '🌸', '✨', '🦋', '📸', '🍒', '🪩', '☁️', '🌈', '🧸', '💌'];
   const [newFrameName, setNewFrameName] = useState('');
   const [newFrameColor, setNewFrameColor] = useState('#ff0000');
   const [newFrameTextColor, setNewFrameTextColor] = useState('#ffffff');
@@ -1267,6 +1288,17 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
       setNewSticker('');
     }
   };
+
+  const toggleBuiltinSticker = (stickerId) => {
+    setEnabledBuiltinStickerIds(previous => {
+      const enabled = Array.isArray(previous) ? previous : BUILTIN_STICKERS.map(sticker => sticker.id);
+      return enabled.includes(stickerId)
+        ? enabled.filter(id => id !== stickerId)
+        : [...enabled, stickerId];
+    });
+  };
+
+  const applyLandingTheme = theme => setLandingConfig(previous => ({ ...previous, ...LANDING_THEME_PRESETS[theme] }));
 
   const startStickerEdit = (index, sticker) => {
     setEditingStickerIndex(index);
@@ -1332,7 +1364,16 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
   };
 
   const exportSettings = () => {
-    const data = JSON.stringify({ frames, stickers, landingConfig, photoConfig, customLayouts: safeCustomLayouts });
+    const data = JSON.stringify({
+      version: 2,
+      frames,
+      stickers,
+      enabledBuiltinStickerIds,
+      landingConfig,
+      photoConfig,
+      cloudConfig,
+      customLayouts: safeCustomLayouts,
+    });
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1351,8 +1392,10 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
         const data = JSON.parse(event.target.result);
         if (data.frames) setFrames(data.frames);
         if (data.stickers) setStickers(data.stickers);
+        if (Array.isArray(data.enabledBuiltinStickerIds)) setEnabledBuiltinStickerIds(data.enabledBuiltinStickerIds);
         if (data.landingConfig) setLandingConfig(data.landingConfig);
         if (data.photoConfig) setPhotoConfig(data.photoConfig);
+        if (data.cloudConfig) setCloudConfig(data.cloudConfig);
         if (data.customLayouts) setCustomLayouts(getSafeCustomLayouts(data.customLayouts));
         alert("โหลดการตั้งค่าสำเร็จ!");
       } catch (err) {
@@ -1372,7 +1415,10 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
           </button>
           <div>
             <h2 className="text-2xl font-bold">ระบบหลังบ้าน (Admin Dashboard)</h2>
-            <p className="text-zinc-400 text-sm mt-1">จัดการเทมเพลตและสติกเกอร์ ข้อมูลจะถูกบันทึกในอุปกรณ์นี้</p>
+            <p className="text-zinc-400 text-sm mt-1">จัดการหน้าเว็บและทรัพยากร • บันทึกในเบราว์เซอร์อุปกรณ์นี้</p>
+            <p role="status" aria-live="polite" className={`text-xs mt-2 ${landingSaveError ? 'text-red-300' : 'text-emerald-300'}`}>
+              {landingSaveError ? `⚠️ ${landingSaveError}` : '✓ บันทึกการตั้งค่าหน้าเว็บแล้วในอุปกรณ์นี้'}
+            </p>
           </div>
         </div>
         <div className="flex gap-3 w-full md:w-auto">
@@ -1388,10 +1434,10 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
 
       <div className="max-w-6xl mx-auto w-full grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'สติกเกอร์', value: stickers.length, color: 'text-indigo-300', detail: 'รายการที่จัดการได้' },
+          { label: 'สติกเกอร์', value: stickers.length + (Array.isArray(enabledBuiltinStickerIds) ? enabledBuiltinStickerIds.length : BUILTIN_STICKERS.length), color: 'text-indigo-300', detail: 'เปิดใช้ในหน้าตกแต่งรูป' },
           { label: 'กรอบภาพ', value: frames.length, color: 'text-fuchsia-300', detail: 'พร้อมใช้ในหน้าแต่งภาพ' },
           { label: 'เลย์เอาต์', value: availableLayouts.length, color: 'text-green-300', detail: 'ต้นแบบและแบบที่บันทึก' },
-          { label: 'การบันทึก', value: 'อัตโนมัติ', color: 'text-amber-300', detail: 'เก็บในเบราว์เซอร์นี้' },
+          { label: 'การบันทึก', value: 'ในเครื่องนี้', color: 'text-amber-300', detail: 'บันทึกอัตโนมัติ · ยังไม่ซิงก์ข้ามเครื่อง' },
         ].map(card => (
           <div key={card.label} className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
             <div className="flex items-center justify-between gap-2"><span className="text-sm text-zinc-400">{card.label}</span><span className={`text-xl font-black ${card.color}`}>{card.value}</span></div>
@@ -1423,56 +1469,28 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <button
                         type="button"
-                        onClick={() => setLandingConfig({
-                          ...landingConfig,
-                          title: 'Snap Your Best Moments',
-                          subtitle: 'บันทึกรอยยิ้มสไตล์เกาหลี พร้อมวิดีโอไทม์แลปส์เบื้องหลัง และดาวน์โหลดผ่าน QR Code ได้ทันที',
-                          buttonText: 'แตะเพื่อเริ่มถ่ายรูป ✨',
-                          accentColor: '#818cf8',
-                          theme: 'korean'
-                        })}
+                        onClick={() => applyLandingTheme('korean')}
                         className="p-2 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-xs font-bold text-indigo-300 hover:bg-indigo-500/30 transition-all text-center cursor-pointer"
                       >
                         🌸 เกาหลี (Haru)
                       </button>
                       <button
                         type="button"
-                        onClick={() => setLandingConfig({
-                          ...landingConfig,
-                          title: 'Y2K Cyber Photobooth',
-                          subtitle: 'ตู้ถ่ายรูปสุดชิคสไตล์ Y2K กลิ่นอายเรโทร ปรับแต่งสติกเกอร์ได้จุใจ!',
-                          buttonText: '⚡ START SHOOTING',
-                          accentColor: '#ec4899',
-                          theme: 'y2k'
-                        })}
+                        onClick={() => applyLandingTheme('y2k')}
                         className="p-2 rounded-lg bg-pink-500/20 border border-pink-500/40 text-xs font-bold text-pink-300 hover:bg-pink-500/30 transition-all text-center cursor-pointer"
                       >
                         ⚡ Cyber Y2K
                       </button>
                       <button
                         type="button"
-                        onClick={() => setLandingConfig({
-                          ...landingConfig,
-                          title: 'Analog Film Darkroom',
-                          subtitle: 'สัมผัสบรรยากาศฟิล์มคลาสสิก อบอุ่น โทนสีนุ่มนวลเหนือกาลเวลา',
-                          buttonText: '🎞️ เข้าตู้ถ่ายรูปฟิล์ม',
-                          accentColor: '#d97706',
-                          theme: 'film'
-                        })}
+                        onClick={() => applyLandingTheme('film')}
                         className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/40 text-xs font-bold text-amber-300 hover:bg-amber-500/30 transition-all text-center cursor-pointer"
                       >
                         🎞️ ฟิล์มวินเทจ
                       </button>
                       <button
                         type="button"
-                        onClick={() => setLandingConfig({
-                          ...landingConfig,
-                          title: 'Yeehaw Photo Booth',
-                          subtitle: 'ถ่ายรูปสไตล์คาวบอย กรอบสวย สติกเกอร์เพียบ!',
-                          buttonText: '🤠 แตะเพื่อเริ่มถ่ายรูป',
-                          accentColor: '#d4a055',
-                          theme: 'cowboy'
-                        })}
+                        onClick={() => applyLandingTheme('cowboy')}
                         className="p-2 rounded-lg bg-amber-800/20 border border-amber-700/40 text-xs font-bold text-amber-200 hover:bg-amber-800/30 transition-all text-center cursor-pointer"
                       >
                         🤠 คาวบอย
@@ -1528,33 +1546,16 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
                   </div>
                 </div>
                 
-                {/* Live Preview */}
-                <div className="flex flex-col items-center justify-center p-4 bg-zinc-800 rounded-xl border border-zinc-700">
-                  <span className="text-xs text-zinc-400 mb-2">Live Preview</span>
-                  <div 
-                    className="w-[200px] h-[120px] rounded-lg relative overflow-hidden flex flex-col items-center justify-center border-2 border-dashed"
-                    style={{
-                      borderColor: landingConfig.accentColor,
-                      background: landingConfig.bgImage 
-                        ? `url(${landingConfig.bgImage}) center/cover no-repeat` 
-                        : `linear-gradient(to bottom, ${landingConfig.bgColor1}, ${landingConfig.bgColor2})`
-                    }}
-                  >
-                    {landingConfig.bgImage && <div className="absolute inset-0 bg-black/40" />}
-                    <div className="relative z-10 text-center scale-50 origin-center w-[350px]">
-                      <h4 className="font-serif font-bold text-xl mb-1" style={{ color: landingConfig.accentColor }}>{landingConfig.title}</h4>
-                      <div 
-                        className="mx-auto px-4 py-2 rounded-full text-sm font-bold border-2 inline-block"
-                        style={{ 
-                          backgroundColor: '#3d1f00',
-                          color: landingConfig.accentColor,
-                          borderColor: landingConfig.accentColor
-                        }}
-                      >
-                        {landingConfig.buttonText}
-                      </div>
-                    </div>
+                <div className="md:sticky md:top-4 self-start w-full rounded-2xl border border-zinc-700 bg-zinc-950 p-3 shadow-2xl">
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <span className="text-xs font-bold text-zinc-200">ตัวอย่างหน้าเว็บจริง</span>
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-300">อัปเดตสด</span>
                   </div>
+                  <div className="h-[min(70vh,680px)] min-h-[480px] overflow-hidden rounded-xl border border-zinc-800">
+                    <LandingView preview config={landingConfig} onUpdateConfig={setLandingConfig} onStart={() => {}} onAdmin={() => {}} />
+                  </div>
+                  <button type="button" onClick={() => setLandingConfig({ ...landingConfig })} className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-500">บันทึกการตั้งค่าหน้านี้</button>
+                  <p className="px-1 pt-2 text-[11px] leading-relaxed text-zinc-500">การบันทึกใช้พื้นที่เบราว์เซอร์นี้เท่านั้น ยังไม่ซิงก์ไปยัง iPad/เครื่องอื่น</p>
                 </div>
               </div>
             </div>
@@ -1724,6 +1725,12 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
                 />
                 <button onClick={addSticker} className="bg-indigo-600 hover:bg-indigo-700 px-6 rounded-xl font-bold transition-colors">เพิ่ม</button>
               </div>
+              <div className="flex flex-wrap gap-2" aria-label="อีโมจิแนะนำ">
+                {quickEmojis.map(emoji => (
+                  <button key={emoji} type="button" onClick={() => setNewSticker(value => `${value}${emoji}`)} title={`เพิ่ม ${emoji}`} className="w-10 h-10 rounded-xl border border-zinc-700 bg-zinc-800 hover:border-indigo-400 hover:bg-indigo-500/15 text-xl transition-colors">{emoji}</button>
+                ))}
+                <button type="button" onClick={addSticker} disabled={!newSticker.trim()} className="px-3 h-10 rounded-xl border border-indigo-500/40 bg-indigo-500/10 text-indigo-300 text-sm font-semibold disabled:opacity-40">เพิ่มข้อความ/อีโมจิ</button>
+              </div>
               <div className="relative mt-2">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-800"></div></div>
                 <div className="relative flex justify-center"><span className="px-2 bg-zinc-900/50 text-xs text-zinc-500 uppercase">หรือ</span></div>
@@ -1734,7 +1741,32 @@ function AdminView({ frames, setFrames, stickers, setStickers, landingConfig, se
               </label>
             </div>
 
-            <p className="text-sm text-zinc-400">รายการนี้เชื่อมกับหน้าตกแต่งรูปโดยตรง แก้ไขหรือลบที่นี่แล้วหน้าใช้งานจะอัปเดตตามทันที</p>
+            <section className="space-y-3 rounded-2xl border border-indigo-500/20 bg-zinc-950/50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="font-bold text-zinc-100">สติกเกอร์ในตัว</h4>
+                  <p className="text-xs text-zinc-400 mt-1">เลือกเปิด/ปิดสติกเกอร์ชุดนี้ในหน้าตกแต่งได้ทันที</p>
+                </div>
+                <span className="rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300">{(Array.isArray(enabledBuiltinStickerIds) ? enabledBuiltinStickerIds : []).length} / {BUILTIN_STICKERS.length} เปิดใช้งาน</span>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setEnabledBuiltinStickerIds(BUILTIN_STICKERS.map(sticker => sticker.id))} className="rounded-lg border border-indigo-400/30 px-3 py-1.5 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/10">เปิดทั้งหมด</button>
+                <button type="button" onClick={() => setEnabledBuiltinStickerIds([])} className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800">ปิดทั้งหมด</button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                {BUILTIN_STICKERS.map(sticker => {
+                  const enabled = (Array.isArray(enabledBuiltinStickerIds) ? enabledBuiltinStickerIds : []).includes(sticker.id);
+                  return (
+                    <button key={sticker.id} type="button" onClick={() => toggleBuiltinSticker(sticker.id)} aria-pressed={enabled} className={`flex items-center gap-3 rounded-xl border p-2 text-left transition-colors ${enabled ? 'border-indigo-400/50 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-900 opacity-60'}`}>
+                      <img src={sticker.dataUri} alt="" className="h-10 w-10 object-contain" />
+                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-zinc-200">{sticker.name}</span>
+                      <span className={`text-[10px] font-bold ${enabled ? 'text-emerald-300' : 'text-zinc-500'}`}>{enabled ? 'เปิด' : 'ปิด'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+            <p className="text-sm text-zinc-400">อีโมจิและรูปที่เพิ่ม/แก้ไข/ลบ และสติกเกอร์ในตัวที่เปิด/ปิด จะสะท้อนในหน้าตกแต่งรูปทันทีบนเบราว์เซอร์นี้</p>
             <input value={stickerSearch} onChange={event => setStickerSearch(event.target.value)} placeholder="ค้นหาข้อความหรือสติกเกอร์รูปภาพ" className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500" />
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
               {visibleStickerEntries.map(({ sticker: st, index: i }) => (
@@ -2537,7 +2569,7 @@ function DraggableSticker({
   );
 }
 
-function EditorView({ config, photos, availableFrames, availableStickers, brandText, fontFamily, finalVideo, photoConfig, onExport, onRetake }) {
+function EditorView({ config, photos, availableFrames, availableStickers, enabledBuiltinStickerIds, brandText, fontFamily, finalVideo, photoConfig, onExport, onRetake }) {
   const [stickers, setStickers] = useState(() => (config.layout.decorations || []).flatMap((decoration, index) => {
     const asset = BUILTIN_STICKERS.find(item => item.id === decoration.stickerId);
     return asset ? [{
@@ -2556,6 +2588,9 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
   const [selectedFrame, setSelectedFrame] = useState(() => availableFrames.find(frame => frame.id === config.layout.frameId) || availableFrames[0] || DEFAULT_FRAMES[0]);
   const [isExporting, setIsExporting] = useState(false);
   const customLayout = isCustomLayout(config.layout);
+  const enabledBuiltins = Array.isArray(enabledBuiltinStickerIds)
+    ? new Set(enabledBuiltinStickerIds)
+    : new Set(BUILTIN_STICKERS.map(sticker => sticker.id));
   
   const layoutRef = useRef(null); // The actual frame container
 
@@ -3031,7 +3066,7 @@ function EditorView({ config, photos, availableFrames, availableStickers, brandT
             <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-4 gap-2.5 max-h-48 md:max-h-56 overflow-y-auto p-1 bg-zinc-950/40 rounded-2xl border border-zinc-800/80">
               {/* Built-in high quality vector stickers */}
               {BUILTIN_STICKERS
-                .filter(s => selectedCategory === 'all' || s.category === selectedCategory)
+                .filter(s => enabledBuiltins.has(s.id) && (selectedCategory === 'all' || s.category === selectedCategory))
                 .map(s => (
                   <button
                     key={s.id}
