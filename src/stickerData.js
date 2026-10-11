@@ -552,5 +552,124 @@ export const BUILTIN_STICKERS = [
         </g>
       </svg>
     `)
+  },
+  {
+    id: 'sp_bow_silver',
+    category: 'sparkles',
+    name: 'โบว์เงินกลิทเทอร์',
+    dataUri: svgToUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+        <defs>
+          <linearGradient id="silverBowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="40%" stop-color="#e2e8f0"/>
+            <stop offset="70%" stop-color="#94a3b8"/>
+            <stop offset="100%" stop-color="#475569"/>
+          </linearGradient>
+        </defs>
+        <g filter="drop-shadow(0px 3px 5px rgba(255,255,255,0.4))">
+          <!-- Left Wing -->
+          <path d="M 46,48 C 28,30 14,35 18,52 C 22,65 38,58 46,52 Z" fill="url(#silverBowGrad)" stroke="#cbd5e1" stroke-width="1.8"/>
+          <!-- Right Wing -->
+          <path d="M 54,48 C 72,30 86,35 82,52 C 78,65 62,58 54,52 Z" fill="url(#silverBowGrad)" stroke="#cbd5e1" stroke-width="1.8"/>
+          <!-- Tails -->
+          <path d="M 45,54 L 32,82 L 44,77 L 48,60 Z" fill="url(#silverBowGrad)" stroke="#cbd5e1" stroke-width="1.5"/>
+          <path d="M 55,54 L 68,82 L 56,77 L 52,60 Z" fill="url(#silverBowGrad)" stroke="#cbd5e1" stroke-width="1.5"/>
+          <!-- Rhinestone Knot -->
+          <circle cx="50" cy="50" r="7.5" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+          <circle cx="50" cy="50" r="4" fill="#ffffff"/>
+          <circle cx="48" cy="48" r="1.5" fill="#38bdf8"/>
+        </g>
+      </svg>
+    `)
+  },
+  {
+    id: 'sp_gem_rhinestone',
+    category: 'sparkles',
+    name: 'หมุดเพชรคริสตัล',
+    dataUri: svgToUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+        <defs>
+          <radialGradient id="gemGrad" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="30%" stop-color="#f472b6"/>
+            <stop offset="60%" stop-color="#db2777"/>
+            <stop offset="100%" stop-color="#831843"/>
+          </radialGradient>
+        </defs>
+        <g filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.5))">
+          <circle cx="40" cy="40" r="26" fill="url(#gemGrad)" stroke="#fda4af" stroke-width="2.5"/>
+          <circle cx="40" cy="40" r="20" fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="0.6"/>
+          <!-- Glare -->
+          <ellipse cx="32" cy="30" rx="6" ry="3.5" fill="#ffffff" opacity="0.85" transform="rotate(-30 32 30)"/>
+        </g>
+      </svg>
+    `)
+  },
+  {
+    id: 'sp_heart_lace',
+    category: 'cute',
+    name: 'ป้ายหัวใจ Haru Film',
+    dataUri: svgToUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+        <defs>
+          <filter id="badgeShadow">
+            <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/>
+          </filter>
+        </defs>
+        <g filter="url(#badgeShadow)">
+          <!-- Outer Scalloped Lace -->
+          <path d="M 50,86 C 20,64 12,42 20,24 C 28,10 42,14 50,26 C 58,14 72,10 80,24 C 88,42 80,64 50,86 Z" fill="#ffffff" stroke="#fda4af" stroke-width="2"/>
+          <!-- Inner Red Heart -->
+          <path d="M 50,80 C 24,60 18,40 24,26 C 30,14 42,18 50,28 C 58,18 70,14 76,26 C 82,40 76,60 50,80 Z" fill="#e11d48"/>
+          <!-- Lace Dots -->
+          <circle cx="20" cy="24" r="2.5" fill="#ffffff"/>
+          <circle cx="32" cy="14" r="2.5" fill="#ffffff"/>
+          <circle cx="68" cy="14" r="2.5" fill="#ffffff"/>
+          <circle cx="80" cy="24" r="2.5" fill="#ffffff"/>
+          <circle cx="50" cy="85" r="2.5" fill="#ffffff"/>
+          <!-- Cursive Text inside -->
+          <text x="50" y="47" text-anchor="middle" font-family="serif" font-style="italic" font-weight="900" font-size="9" fill="#ffffff">Haru Film</text>
+          <text x="50" y="58" text-anchor="middle" font-size="7" fill="#fecdd3">♡ ♡ ♡</text>
+        </g>
+      </svg>
+    `)
+  },
+  {
+    id: 'sp_safety_pin',
+    category: 'sparkles',
+    name: 'เข็มกลัดเงินวินเทจ',
+    dataUri: svgToUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+        <g filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.5))" transform="rotate(-35 40 40)">
+          <!-- Safety Pin Body -->
+          <path d="M 25,60 C 20,60 18,52 24,46 L 50,20 C 56,14 64,18 64,24 L 64,28" fill="none" stroke="#e2e8f0" stroke-width="3" stroke-linecap="round"/>
+          <path d="M 25,60 C 20,60 16,56 16,50 C 16,44 24,44 28,46 L 56,22" fill="none" stroke="#cbd5e1" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Pin Clasp / Head -->
+          <rect x="48" y="14" width="18" height="12" rx="3" fill="#94a3b8" stroke="#f1f5f9" stroke-width="1.5"/>
+          <circle cx="57" cy="20" r="2" fill="#ffffff"/>
+        </g>
+      </svg>
+    `)
+  },
+  {
+    id: 'cb_fluffy_cloud',
+    category: 'cute',
+    name: 'ก้อนเมฆนุ่มนวล',
+    dataUri: svgToUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" width="100" height="80">
+        <defs>
+          <linearGradient id="cloudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="100%" stop-color="#e0f2fe"/>
+          </linearGradient>
+        </defs>
+        <g filter="drop-shadow(0px 3px 5px rgba(56,189,248,0.3))">
+          <path d="M 28,62 C 18,62 14,50 22,42 C 20,32 30,22 42,26 C 48,16 64,16 70,26 C 80,24 88,34 84,44 C 92,50 88,62 76,62 Z" fill="url(#cloudGrad)" stroke="#bae6fd" stroke-width="2"/>
+          <circle cx="38" cy="46" r="2.5" fill="#fda4af"/>
+          <circle cx="64" cy="46" r="2.5" fill="#fda4af"/>
+        </g>
+      </svg>
+    `)
   }
 ];

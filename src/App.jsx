@@ -7,12 +7,43 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { STICKER_CATEGORIES, BUILTIN_STICKERS } from './stickerData.js';
+import { JEV_TEMPLATES, getJevBalancedDecorations } from './jevTemplates.js';
 
 // --- INITIAL CONFIGURATION & ASSETS ---
 const LAYOUTS = {
   single: { id: 'single', name: '1 รูป (โพลารอยด์)', shots: 1, cols: 1, aspect: 'aspect-[3/4]', vW: 1200, vH: 1600 },
   strip: { id: 'strip', name: '3 รูป (แนวตั้ง)', shots: 3, cols: 1, aspect: 'aspect-[1/3]', vW: 800, vH: 2400 },
   strip_4: { id: 'strip_4', name: '4 รูป (แนวตั้ง)', shots: 4, cols: 1, aspect: 'aspect-[1/4]', vW: 800, vH: 3200 },
+  cowboy_strip: {
+    id: 'cowboy_strip', name: 'คาวบอยสกายบลู (4 รูป)', shots: 4, cols: 1, aspect: 'aspect-[1/3]', vW: 800, vH: 2400,
+    slots: [
+      { id: 0, x: 13, y: 9, w: 74, h: 17 },
+      { id: 1, x: 13, y: 31, w: 74, h: 17 },
+      { id: 2, x: 13, y: 53, w: 74, h: 17 },
+      { id: 3, x: 13, y: 75, w: 74, h: 17 },
+    ],
+    texts: [
+      { id: 'cowboy-top', text: '★  WILD WEST SKY · HARU FILM  ★', x: 50, y: 4.5, size: 4.5, color: '#1e3a8a' },
+    ],
+    frameId: 'wild_west_sky',
+    decorations: JEV_TEMPLATES[0].decorations,
+    brandText: '♡ WILD WEST SKY · HARU FILM ♡',
+  },
+  wanted_noir: {
+    id: 'wanted_noir', name: 'ดาร์กซาลูนแกลม (4 รูป)', shots: 4, cols: 1, aspect: 'aspect-[1/3]', vW: 800, vH: 2400,
+    slots: [
+      { id: 0, x: 13, y: 9, w: 74, h: 17 },
+      { id: 1, x: 13, y: 31, w: 74, h: 17 },
+      { id: 2, x: 13, y: 53, w: 74, h: 17 },
+      { id: 3, x: 13, y: 75, w: 74, h: 17 },
+    ],
+    texts: [
+      { id: 'noir-top', text: '✦ HARU FILM · NOIR ✦', x: 50, y: 4.5, size: 4.5, color: '#fbbf24' },
+    ],
+    frameId: 'dark_saloon_glam',
+    decorations: JEV_TEMPLATES[1].decorations,
+    brandText: '✦ HARU FILM · WILD NOIR ✦',
+  },
   scrapbook: {
     id: 'scrapbook', name: 'สมุดภาพหวานใจ (4 รูป)', shots: 4, cols: 1, aspect: 'aspect-[1/3]', vW: 800, vH: 2400,
     slots: [
@@ -53,7 +84,8 @@ const DEFAULT_FRAMES = [
   { id: 'y2k', name: 'Y2K ชมพู', type: 'color', bg: '#f472b6', text: '#ffffff' },
   { id: 'checkered', name: 'หมากรุก', type: 'pattern', bg: 'repeating-conic-gradient(#cbd5e1 0% 25%, #ffffff 0% 50%) 50% / 40px 40px', baseColor: '#ffffff', patternColor: '#cbd5e1', size: 40, text: '#000000' },
   { id: 'scrapbook_blue', name: 'สมุดภาพฟ้า', type: 'pattern', design: 'scrapbook', bg: 'radial-gradient(circle at 10px 10px, #fff9 1.5px, transparent 2px), linear-gradient(135deg,#d8efff,#a8d6f4)', baseColor: '#c7e5fa', accent: '#3978a8', text: '#173b5a' },
-  { id: 'scrapbook_pink', name: 'สมุดภาพชมพู', type: 'pattern', design: 'scrapbook', bg: 'radial-gradient(circle at 10px 10px, #fff9 1.5px, transparent 2px), linear-gradient(135deg,#ffe1ec,#f5b9d0)', baseColor: '#f9d3e2', accent: '#b34c78', text: '#682640' }
+  { id: 'scrapbook_pink', name: 'สมุดภาพชมพู', type: 'pattern', design: 'scrapbook', bg: 'radial-gradient(circle at 10px 10px, #fff9 1.5px, transparent 2px), linear-gradient(135deg,#ffe1ec,#f5b9d0)', baseColor: '#f9d3e2', accent: '#b34c78', text: '#682640' },
+  ...JEV_TEMPLATES.map(t => t.frame)
 ];
 
 const DEFAULT_STICKERS = ['👑', '✨', '💖', '🎉', '🌸', '😎', '🐱', '🎀', '🎈', '🔥', '💎', '🌈', '🦋'];
@@ -226,6 +258,161 @@ const drawScrapbookPaper = (ctx, width, height, frame) => {
     drawStar(x, y, radius * (i % 3 === 0 ? 1.1 : 0.65));
   }
   ctx.restore();
+};
+
+const drawCustomFramePattern = (ctx, width, height, frame) => {
+  const design = frame.design || 'default';
+  const inset = Math.max(20, width * 0.035);
+
+  if (design === 'scrapbook') {
+    drawScrapbookPaper(ctx, width, height, frame);
+    return;
+  }
+
+  if (design === 'sky_clouds') {
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+    skyGrad.addColorStop(0, '#cbe7ff');
+    skyGrad.addColorStop(1, '#a0c4ff');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#ffffff';
+    const cell = Math.max(60, width * 0.12);
+    for (let y = cell / 2; y < height; y += cell) {
+      for (let x = cell / 2; x < width; x += cell) {
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(3, width * 0.005), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 0.65;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(3, width * 0.005);
+    ctx.setLineDash([width * 0.015, width * 0.01]);
+    ctx.strokeRect(inset, inset, width - inset * 2, height - inset * 2);
+    ctx.setLineDash([]);
+    ctx.restore();
+    return;
+  }
+
+  if (design === 'dark_glam') {
+    const darkGrad = ctx.createLinearGradient(0, 0, 0, height);
+    darkGrad.addColorStop(0, '#18181b');
+    darkGrad.addColorStop(1, '#09090b');
+    ctx.fillStyle = darkGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 90; i++) {
+      const rx = (Math.sin(i * 123.45) * 0.5 + 0.5) * width;
+      const ry = (Math.cos(i * 321.54) * 0.5 + 0.5) * height;
+      const size = (i % 3 === 0 ? 3.5 : 1.8) * (width / 800);
+      ctx.globalAlpha = (i % 2 === 0 ? 0.35 : 0.6);
+      ctx.fillRect(rx, ry, size, size);
+    }
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = Math.max(2, width * 0.003);
+    ctx.strokeRect(inset, inset, width - inset * 2, height - inset * 2);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(1, width * 0.0015);
+    ctx.strokeRect(inset + 6, inset + 6, width - (inset + 6) * 2, height - (inset + 6) * 2);
+    ctx.restore();
+    return;
+  }
+
+  if (design === 'parchment') {
+    const pGrad = ctx.createLinearGradient(0, 0, 0, height);
+    pGrad.addColorStop(0, '#fef3c7');
+    pGrad.addColorStop(1, '#fde68a');
+    ctx.fillStyle = pGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = Math.max(3, width * 0.005);
+    ctx.setLineDash([width * 0.012, width * 0.008]);
+    ctx.strokeRect(inset, inset, width - inset * 2, height - inset * 2);
+    ctx.setLineDash([]);
+
+    ctx.lineWidth = Math.max(3, width * 0.006);
+    const cornerSize = width * 0.04;
+    ctx.beginPath();
+    ctx.moveTo(inset, inset + cornerSize); ctx.lineTo(inset, inset); ctx.lineTo(inset + cornerSize, inset);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(width - inset - cornerSize, inset); ctx.lineTo(width - inset, inset); ctx.lineTo(width - inset, inset + cornerSize);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(inset, height - inset - cornerSize); ctx.lineTo(inset, height - inset); ctx.lineTo(inset + cornerSize, height - inset);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(width - inset - cornerSize, height - inset); ctx.lineTo(width - inset, height - inset); ctx.lineTo(width - inset, height - inset - cornerSize);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  if (design === 'sunset') {
+    const sGrad = ctx.createLinearGradient(0, 0, 0, height);
+    sGrad.addColorStop(0, '#fdba74');
+    sGrad.addColorStop(0.55, '#f472b6');
+    sGrad.addColorStop(1, '#c084fc');
+    ctx.fillStyle = sGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(2.5, width * 0.004);
+    ctx.setLineDash([width * 0.015, width * 0.01]);
+    ctx.strokeRect(inset, inset, width - inset * 2, height - inset * 2);
+    ctx.setLineDash([]);
+    ctx.restore();
+    return;
+  }
+
+  if (design === 'denim') {
+    const dGrad = ctx.createLinearGradient(0, 0, 0, height);
+    dGrad.addColorStop(0, '#1e3a8a');
+    dGrad.addColorStop(1, '#172554');
+    ctx.fillStyle = dGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = Math.max(2.5, width * 0.004);
+    ctx.setLineDash([width * 0.01, width * 0.008]);
+    ctx.strokeRect(inset, inset, width - inset * 2, height - inset * 2);
+    ctx.strokeRect(inset + 8, inset + 8, width - (inset + 8) * 2, height - (inset + 8) * 2);
+    ctx.setLineDash([]);
+    ctx.restore();
+    return;
+  }
+
+  if (design === 'rodeo_pink') {
+    const rpGrad = ctx.createLinearGradient(0, 0, 0, height);
+    rpGrad.addColorStop(0, '#fdf2f8');
+    rpGrad.addColorStop(1, '#fbcfe8');
+    ctx.fillStyle = rpGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.globalAlpha = 0.65;
+    ctx.strokeStyle = '#db2777';
+    ctx.lineWidth = Math.max(2.5, width * 0.004);
+    ctx.setLineDash([width * 0.012, width * 0.009]);
+    ctx.strokeRect(inset, inset, width - inset * 2, height - inset * 2);
+    ctx.setLineDash([]);
+    ctx.restore();
+    return;
+  }
+
+  ctx.fillStyle = frame.baseColor || frame.bg || '#ffffff';
+  ctx.fillRect(0, 0, width, height);
 };
 
 const drawImageCover = (ctx, img, x, y, width, height) => {
@@ -867,7 +1054,7 @@ const LAYOUT_TEMPLATES = [
   ]},
 ];
 
-const PREVIEW_LAYOUTS = [LAYOUTS.single, LAYOUTS.strip, LAYOUTS.strip_4, LAYOUTS.scrapbook];
+const PREVIEW_LAYOUTS = [LAYOUTS.single, LAYOUTS.strip, LAYOUTS.strip_4, LAYOUTS.cowboy_strip, LAYOUTS.wanted_noir, LAYOUTS.scrapbook];
 const getPresetOverrideId = (layoutId) => `preset_${layoutId}`;
 const getAvailableLayouts = (customLayouts = []) => {
   const safeLayouts = getSafeCustomLayouts(customLayouts);
@@ -2594,6 +2781,57 @@ function EditorView({ config, photos, availableFrames, availableStickers, enable
   const enabledBuiltins = Array.isArray(enabledBuiltinStickerIds)
     ? new Set(enabledBuiltinStickerIds)
     : new Set(BUILTIN_STICKERS.map(sticker => sticker.id));
+  const [copiedPromptId, setCopiedPromptId] = useState(null);
+
+  const applyTemplate = (template) => {
+    const matchedFrame = availableFrames.find(f => f.id === template.frameId) || template.frame;
+    setSelectedFrame(matchedFrame);
+
+    const newStickers = (template.decorations || []).flatMap((decoration, idx) => {
+      const asset = BUILTIN_STICKERS.find(item => item.id === decoration.stickerId);
+      return asset ? [{
+        id: `template-${Date.now()}-${idx}`,
+        content: asset.dataUri,
+        x: decoration.x,
+        y: decoration.y,
+        scale: decoration.scale,
+        rotation: decoration.rotation || 0,
+        flipH: false,
+      }] : [];
+    });
+
+    setStickers(newStickers);
+    setSelectedStickerId(null);
+    playAudioTone('pop');
+  };
+
+  const handleJevAutoDecorate = () => {
+    const randomDecs = getJevBalancedDecorations('cowboy');
+    const newStickers = randomDecs.flatMap((decoration, idx) => {
+      const asset = BUILTIN_STICKERS.find(item => item.id === decoration.stickerId);
+      return asset ? [{
+        id: `jev-auto-${Date.now()}-${idx}`,
+        content: asset.dataUri,
+        x: decoration.x,
+        y: decoration.y,
+        scale: decoration.scale,
+        rotation: decoration.rotation || 0,
+        flipH: false,
+      }] : [];
+    });
+    setStickers(newStickers);
+    setSelectedStickerId(null);
+    playAudioTone('pop');
+  };
+
+  const copyAiPrompt = (promptText, templateId) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(promptText);
+    }
+    setCopiedPromptId(templateId);
+    setTimeout(() => setCopiedPromptId(null), 2500);
+    playAudioTone('tap');
+  };
   
   const layoutRef = useRef(null); // The actual frame container
 
@@ -2688,12 +2926,7 @@ function EditorView({ config, photos, availableFrames, availableStickers, enable
         ctx.fillStyle = selectedFrame.bg;
         ctx.fillRect(0, 0, vW, vH);
       } else if (selectedFrame.type === 'gradient' || selectedFrame.type === 'pattern') {
-        if (selectedFrame.design === 'scrapbook') {
-          drawScrapbookPaper(ctx, vW, vH, selectedFrame);
-        } else {
-          ctx.fillStyle = selectedFrame.baseColor || selectedFrame.colors?.[0] || '#ffffff';
-          ctx.fillRect(0, 0, vW, vH);
-        }
+        drawCustomFramePattern(ctx, vW, vH, selectedFrame);
         
         if (selectedFrame.id === 'checkered') {
           ctx.fillStyle = selectedFrame.patternColor;
@@ -2883,6 +3116,21 @@ function EditorView({ config, photos, availableFrames, availableStickers, enable
         <div className="h-px w-6 bg-zinc-800 block md:hidden" />
         
         <button 
+          onClick={(e) => { e.stopPropagation(); setActiveTab('templates'); }} 
+          className={`p-3 rounded-2xl transition-all relative cursor-pointer ${
+            activeTab === 'templates' 
+              ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 font-bold shadow-lg shadow-amber-500/30' 
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+          }`}
+          title="เทมเพลตตกแต่ง (JEV Templates)"
+        >
+          <LayoutTemplate className="w-6 h-6" />
+          <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-amber-400 text-zinc-950 text-[8px] font-black shadow-md">
+            JEV
+          </span>
+        </button>
+        
+        <button 
           onClick={(e) => { e.stopPropagation(); setActiveTab('stickers'); }} 
           className={`p-3 rounded-2xl transition-all relative cursor-pointer ${
             activeTab === 'stickers' 
@@ -3021,6 +3269,124 @@ function EditorView({ config, photos, availableFrames, availableStickers, enable
         className="w-full h-[36dvh] max-h-[36dvh] md:h-auto md:max-h-full md:w-88 bg-zinc-900/95 backdrop-blur-2xl border-t md:border-t-0 md:border-l border-amber-500/20 p-3 sm:p-5 md:p-6 flex flex-col gap-4 md:gap-5 z-20 shrink-0 shadow-2xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Quick Tab Switcher Pills */}
+        <div className="flex items-center gap-1.5 p-1 bg-zinc-950/80 rounded-2xl border border-zinc-800/80 shrink-0">
+          <button
+            onClick={() => setActiveTab('templates')}
+            className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === 'templates'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 shadow-md font-bold'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <LayoutTemplate className="w-3.5 h-3.5" /> เทมเพลต JEV
+          </button>
+          <button
+            onClick={() => setActiveTab('stickers')}
+            className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === 'stickers'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 shadow-md font-bold'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Smile className="w-3.5 h-3.5" /> สติกเกอร์ {stickers.length > 0 && `(${stickers.length})`}
+          </button>
+          <button
+            onClick={() => setActiveTab('frame')}
+            className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === 'frame'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 shadow-md font-bold'
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Settings className="w-3.5 h-3.5" /> กรอบรูป
+          </button>
+        </div>
+
+        {activeTab === 'templates' && (
+          <div className="space-y-4 animate-in fade-in duration-300">
+            {/* Header with Title and JEV Smart Auto Decorator */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                  <Wand2 className="w-4 h-4 text-amber-400" /> เทมเพลตสไตล์ JEV
+                </h3>
+                <p className="text-[10px] text-zinc-400 mt-0.5">กดใช้เทมเพลตเพื่อเปลี่ยนสไตล์และของตกแต่งอัตโนมัติ</p>
+              </div>
+              <button
+                onClick={handleJevAutoDecorate}
+                className="px-2.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 rounded-xl text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                title="ให้ JEV สุ่มจัดตำแหน่งของตกแต่งอย่างสมดุล"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> สุ่มจัดโดย JEV
+              </button>
+            </div>
+
+            {/* Template Cards List */}
+            <div className="space-y-3 max-h-[58dvh] overflow-y-auto pr-1">
+              {JEV_TEMPLATES.map(tpl => {
+                const isSelected = selectedFrame.id === tpl.frameId;
+                return (
+                  <div
+                    key={tpl.id}
+                    className={`p-3 rounded-2xl border transition-all ${
+                      isSelected
+                        ? 'border-amber-400 bg-amber-500/10 shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+                        : 'border-zinc-800 bg-zinc-950/60 hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Mini Preview Box */}
+                      <div 
+                        className="w-14 h-22 rounded-xl shrink-0 border border-zinc-700/60 overflow-hidden shadow-inner flex flex-col justify-between p-1 relative"
+                        style={{ background: tpl.frame.bg }}
+                      >
+                        <div className="w-full h-1.5 rounded-full bg-white/40" />
+                        <div className="w-full flex-1 my-0.5 border border-dashed border-white/50 rounded flex items-center justify-center">
+                          <span className="text-[10px]">📷</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-white/40" />
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-white truncate">{tpl.name}</span>
+                          <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[9px] font-black border border-amber-500/30">
+                            {tpl.badge}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                          {tpl.description}
+                        </p>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-2 mt-2.5">
+                          <button
+                            onClick={() => applyTemplate(tpl)}
+                            className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-zinc-950 rounded-xl text-xs font-bold flex items-center gap-1 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+                          >
+                            <Paintbrush className="w-3.5 h-3.5" /> ใช้เทมเพลต
+                          </button>
+                          
+                          <button
+                            onClick={() => copyAiPrompt(tpl.aiPrompt, tpl.id)}
+                            className="px-2.5 py-1.5 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 rounded-xl text-[10px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                            title="คัดลอก Prompt สำหรับสร้างรูปพื้นหลัง AI ใน Midjourney / Flux / Gemini"
+                          >
+                            <Copy className="w-3 h-3 text-amber-400" />
+                            {copiedPromptId === tpl.id ? 'คัดลอกแล้ว! ✅' : 'คัดลอก Prompt'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'stickers' && (
           <div className="space-y-5 animate-in fade-in duration-300">
             {/* Header with Title and Clear All */}
