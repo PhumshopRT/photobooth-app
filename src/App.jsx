@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Camera, Image as ImageIcon, Wand2, Download, QrCode, 
   Settings, Smile, ChevronRight, Sparkles, RefreshCcw, 
@@ -11,63 +11,65 @@ import { JEV_TEMPLATES, getJevBalancedDecorations } from './jevTemplates.js';
 
 // --- INITIAL CONFIGURATION & ASSETS ---
 const LAYOUTS = {
-  single: { id: 'single', name: '1 รูป (โพลารอยด์)', shots: 1, cols: 1, aspect: 'aspect-[3/4]', vW: 1200, vH: 1600 },
-  strip: { id: 'strip', name: '3 รูป (แนวตั้ง)', shots: 3, cols: 1, aspect: 'aspect-[1/3]', vW: 800, vH: 2400 },
-  strip_4: { id: 'strip_4', name: '4 รูป (แนวตั้ง)', shots: 4, cols: 1, aspect: 'aspect-[1/4]', vW: 800, vH: 3200 },
+  vintage_strip: {
+    id: 'vintage_strip', 
+    name: 'คราฟท์หนังตะวันตก (3 รูป)', 
+    shots: 3, 
+    cols: 1, 
+    aspect: 'aspect-[1/3]', 
+    vW: 800, 
+    vH: 2400,
+    slots: [
+      { id: 0, x: 13, y: 10, w: 74, h: 22 },
+      { id: 1, x: 13, y: 37, w: 74, h: 22 },
+      { id: 2, x: 13, y: 64, w: 74, h: 22 },
+    ],
+    texts: [],
+    frameId: 'vintage_parchment',
+    decorations: JEV_TEMPLATES[0].decorations,
+    brandText: '★ WILD WEST MEMORIES · 1889 ★',
+  },
   cowboy_strip: {
-    id: 'cowboy_strip', name: 'คาวบอยสกายบลู (4 รูป)', shots: 4, cols: 1, aspect: 'aspect-[1/3]', vW: 800, vH: 2400,
+    id: 'cowboy_strip', 
+    name: 'คาวบอยสกายบลู (4 รูป)', 
+    shots: 4, 
+    cols: 1, 
+    aspect: 'aspect-[1/3]', 
+    vW: 800, 
+    vH: 2400,
     slots: [
       { id: 0, x: 13, y: 9, w: 74, h: 17 },
       { id: 1, x: 13, y: 31, w: 74, h: 17 },
       { id: 2, x: 13, y: 53, w: 74, h: 17 },
       { id: 3, x: 13, y: 75, w: 74, h: 17 },
     ],
-    texts: [
-      { id: 'cowboy-top', text: '★  WILD WEST SKY · HARU FILM  ★', x: 50, y: 4.5, size: 4.5, color: '#1e3a8a' },
-    ],
+    texts: [],
     frameId: 'wild_west_sky',
-    decorations: JEV_TEMPLATES[0].decorations,
+    decorations: JEV_TEMPLATES[1].decorations,
     brandText: '♡ WILD WEST SKY · HARU FILM ♡',
   },
   wanted_noir: {
-    id: 'wanted_noir', name: 'ดาร์กซาลูนแกลม (4 รูป)', shots: 4, cols: 1, aspect: 'aspect-[1/3]', vW: 800, vH: 2400,
+    id: 'wanted_noir', 
+    name: 'ดาร์กซาลูนแกลม (4 รูป)', 
+    shots: 4, 
+    cols: 1, 
+    aspect: 'aspect-[1/3]', 
+    vW: 800, 
+    vH: 2400,
     slots: [
       { id: 0, x: 13, y: 9, w: 74, h: 17 },
       { id: 1, x: 13, y: 31, w: 74, h: 17 },
       { id: 2, x: 13, y: 53, w: 74, h: 17 },
       { id: 3, x: 13, y: 75, w: 74, h: 17 },
     ],
-    texts: [
-      { id: 'noir-top', text: '✦ HARU FILM · NOIR ✦', x: 50, y: 4.5, size: 4.5, color: '#fbbf24' },
-    ],
+    texts: [],
     frameId: 'dark_saloon_glam',
-    decorations: JEV_TEMPLATES[1].decorations,
+    decorations: JEV_TEMPLATES[2].decorations,
     brandText: '✦ HARU FILM · WILD NOIR ✦',
   },
-  scrapbook: {
-    id: 'scrapbook', name: 'สมุดภาพหวานใจ (4 รูป)', shots: 4, cols: 1, aspect: 'aspect-[1/3]', vW: 800, vH: 2400,
-    slots: [
-      { id: 0, x: 13, y: 9, w: 74, h: 17 },
-      { id: 1, x: 13, y: 31, w: 74, h: 17 },
-      { id: 2, x: 13, y: 53, w: 74, h: 17 },
-      { id: 3, x: 13, y: 75, w: 74, h: 17 },
-    ],
-    texts: [
-      { id: 'scrapbook-top', text: '♡  OUR LITTLE MOMENTS  ♡', x: 50, y: 4.5, size: 5, color: '#3978a8' },
-    ],
-    frameId: 'scrapbook_blue',
-    decorations: [
-      { stickerId: 'sp_butterfly', x: 6, y: 20, scale: 0.34, rotation: -12 },
-      { stickerId: 'sp_heart_chrome', x: 94, y: 29, scale: 0.34, rotation: 10 },
-      { stickerId: 'ct_daisy', x: 6, y: 47, scale: 0.32, rotation: -8 },
-      { stickerId: 'sp_star_double', x: 94, y: 54, scale: 0.34, rotation: 8 },
-      { stickerId: 'ct_daisy', x: 6, y: 72, scale: 0.3, rotation: 12 },
-      { stickerId: 'sp_butterfly', x: 94, y: 79, scale: 0.34, rotation: -10 },
-    ],
-    brandText: '♡ PHOTO MEMORIES ♡',
-  },
-  grid: { id: 'grid', name: '4 รูป (2x2)', shots: 4, cols: 2, aspect: 'aspect-square', vW: 1600, vH: 1600 },
-  grid_6: { id: 'grid_6', name: '6 รูป (2x3)', shots: 6, cols: 2, aspect: 'aspect-[2/3]', vW: 1600, vH: 2400 },
+  single: { id: 'single', name: '1 รูป (โพลารอยด์)', shots: 1, cols: 1, aspect: 'aspect-[3/4]', vW: 1200, vH: 1600 },
+  strip: { id: 'strip', name: '3 รูป (แนวตั้ง)', shots: 3, cols: 1, aspect: 'aspect-[1/3]', vW: 800, vH: 2400 },
+  strip_4: { id: 'strip_4', name: '4 รูป (แนวตั้ง)', shots: 4, cols: 1, aspect: 'aspect-[1/4]', vW: 800, vH: 3200 },
 };
 
 const FILTERS = [
@@ -79,13 +81,11 @@ const FILTERS = [
 ];
 
 const DEFAULT_FRAMES = [
+  ...JEV_TEMPLATES.map(t => t.frame),
   { id: 'white', name: 'คลาสสิกขาว', type: 'color', bg: '#ffffff', text: '#000000' },
   { id: 'black', name: 'คลาสสิกดำ', type: 'color', bg: '#18181b', text: '#ffffff' },
-  { id: 'y2k', name: 'Y2K ชมพู', type: 'color', bg: '#f472b6', text: '#ffffff' },
   { id: 'checkered', name: 'หมากรุก', type: 'pattern', bg: 'repeating-conic-gradient(#cbd5e1 0% 25%, #ffffff 0% 50%) 50% / 40px 40px', baseColor: '#ffffff', patternColor: '#cbd5e1', size: 40, text: '#000000' },
-  { id: 'scrapbook_blue', name: 'สมุดภาพฟ้า', type: 'pattern', design: 'scrapbook', bg: 'radial-gradient(circle at 10px 10px, #fff9 1.5px, transparent 2px), linear-gradient(135deg,#d8efff,#a8d6f4)', baseColor: '#c7e5fa', accent: '#3978a8', text: '#173b5a' },
-  { id: 'scrapbook_pink', name: 'สมุดภาพชมพู', type: 'pattern', design: 'scrapbook', bg: 'radial-gradient(circle at 10px 10px, #fff9 1.5px, transparent 2px), linear-gradient(135deg,#ffe1ec,#f5b9d0)', baseColor: '#f9d3e2', accent: '#b34c78', text: '#682640' },
-  ...JEV_TEMPLATES.map(t => t.frame)
+  { id: 'y2k', name: 'Y2K ชมพู', type: 'color', bg: '#f472b6', text: '#ffffff' },
 ];
 
 const DEFAULT_STICKERS = ['👑', '✨', '💖', '🎉', '🌸', '😎', '🐱', '🎀', '🎈', '🔥', '💎', '🌈', '🦋'];
@@ -685,7 +685,7 @@ export default function App() {
     }
   }, []);
 
-  const [config, setConfig] = useState({ layout: LAYOUTS.strip, filter: FILTERS[0], timer: 3 });
+  const [config, setConfig] = useState({ layout: LAYOUTS.cowboy_strip, filter: FILTERS[0], timer: 5 });
   const [photos, setPhotos] = useState([]);
   const [finalImage, setFinalImage] = useState(null);
   const [finalVideo, setFinalVideo] = useState(null);
@@ -1054,7 +1054,7 @@ const LAYOUT_TEMPLATES = [
   ]},
 ];
 
-const PREVIEW_LAYOUTS = [LAYOUTS.single, LAYOUTS.strip, LAYOUTS.strip_4, LAYOUTS.cowboy_strip, LAYOUTS.wanted_noir, LAYOUTS.scrapbook];
+const PREVIEW_LAYOUTS = [LAYOUTS.vintage_strip, LAYOUTS.cowboy_strip, LAYOUTS.wanted_noir];
 const getPresetOverrideId = (layoutId) => `preset_${layoutId}`;
 const getAvailableLayouts = (customLayouts = []) => {
   const safeLayouts = getSafeCustomLayouts(customLayouts);
@@ -1388,7 +1388,7 @@ function LayoutEditorTab({ customLayouts = [], setCustomLayouts = () => {}, land
               </div>
             ))}
             {texts.map(t => (
-              <div key={t.id} className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-move whitespace-nowrap px-2 border ${selectedText === t.id ? 'border-amber-500 bg-amber-100/50' : 'border-transparent'}`} style={{ left: `${t.x}%`, top: `${t.y}%`, color: t.color, fontSize: `${t.size}%`, zIndex: 40 }} onMouseDown={e => handleTextPointerDown(e, t.id)} onTouchStart={e => handleTextPointerDown(e, t.id)} onClick={e => { e.stopPropagation(); setSelectedText(t.id); setSelectedSlot(null); }}>{t.text}</div>
+              <div key={t.id} className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-move whitespace-nowrap px-2 border ${selectedText === t.id ? 'border-amber-500 bg-amber-100/50' : 'border-transparent'}`} style={{ left: `${t.x}%`, top: `${t.y}%`, color: t.color, fontSize: `clamp(11px, ${(t.size || 4) * 2.5}px, 24px)`, zIndex: 40 }} onMouseDown={e => handleTextPointerDown(e, t.id)} onTouchStart={e => handleTextPointerDown(e, t.id)} onClick={e => { e.stopPropagation(); setSelectedText(t.id); setSelectedSlot(null); }}>{t.text}</div>
             ))}
             <div className="absolute bottom-[3%] left-1/2 -translate-x-1/2 text-black font-bold text-[clamp(8px,2vw,18px)] pointer-events-none whitespace-nowrap">{landingConfig.brandText || 'STUDIO BOOTH'}</div>
           </div>
@@ -2214,52 +2214,82 @@ function SetupView({ config, setConfig, customLayouts, landingConfig, onNext, on
 
 function BoothView({ config, photoConfig, onComplete, onCancel }) {
   const videoRef = useRef(null);
+  const cameraStageRef = useRef(null);
   const canvasRef = useRef(null);
   const recordCanvasRef = useRef(null);
   const recorderRef = useRef(null);
   const requestRef = useRef(null);
   const chunksRef = useRef([]);
   const streamRef = useRef(null);
-  const [viewportSize, setViewportSize] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
+  const sequenceRef = useRef(false);
+  const [cameraStageSize, setCameraStageSize] = useState({ width: 0, height: 0 });
+  const [cameraState, setCameraState] = useState('loading');
+  const [cameraError, setCameraError] = useState('');
+  const [cameraAttempt, setCameraAttempt] = useState(0);
   const [status, setStatus] = useState('idle'); 
   const [count, setCount] = useState(3);
   const [shotIndex, setShotIndex] = useState(0);
   const [captured, setCaptured] = useState([]);
   const shotCount = getLayoutShotCount(config.layout);
   const cameraAspect = getCaptureAspect(config.layout, shotIndex, photoConfig);
-  const maxCameraHeight = Math.max(180, viewportSize.height - 300);
-  const maxCameraWidth = Math.max(180, viewportSize.width - 48);
-  const cameraHeight = Math.min(maxCameraHeight, maxCameraWidth / cameraAspect);
-  const cameraWidth = cameraHeight * cameraAspect;
+  const cameraWidth = Math.min(cameraStageSize.width, cameraStageSize.height * cameraAspect);
+  const cameraHeight = cameraWidth / cameraAspect;
 
   useEffect(() => {
-    const updateViewport = () => setViewportSize({ width: window.innerWidth, height: window.innerHeight });
-    window.addEventListener('resize', updateViewport);
-    return () => window.removeEventListener('resize', updateViewport);
+    const stage = cameraStageRef.current;
+    if (!stage) return undefined;
+    const observer = new ResizeObserver(([entry]) => {
+      setCameraStageSize({ width: entry.contentRect.width, height: entry.contentRect.height });
+    });
+    observer.observe(stage);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
+    let isActive = true;
     async function startCamera() {
+      setCameraState('loading');
+      setCameraError('');
       try {
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('เบราว์เซอร์นี้ไม่รองรับการเปิดกล้อง');
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: { facingMode: { ideal: 'user' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
           audio: false 
         });
+        if (!isActive) {
+          mediaStream.getTracks().forEach(track => track.stop());
+          return;
+        }
         streamRef.current = mediaStream;
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
+          await videoRef.current.play();
+          setCameraState('ready');
         }
       } catch (err) {
+        if (!isActive) return;
         console.error("Camera error:", err);
-        alert("ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการใช้งานกล้องในเบราว์เซอร์");
+        const message = err?.name === 'NotAllowedError'
+          ? 'กรุณาอนุญาตการใช้กล้องจากแถบที่อยู่ของเบราว์เซอร์ แล้วลองอีกครั้ง'
+          : err?.name === 'NotFoundError'
+            ? 'ไม่พบกล้องที่เชื่อมต่ออยู่ กรุณาเชื่อมต่อกล้องแล้วลองอีกครั้ง'
+            : err?.message || 'เปิดกล้องไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง';
+        setCameraError(message);
+        setCameraState('error');
+        streamRef.current?.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
     }
     startCamera();
     return () => {
+      isActive = false;
+      sequenceRef.current = false;
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
       streamRef.current?.getTracks().forEach(track => track.stop());
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cameraAttempt]);
 
   const startRecording = () => {
     if (!videoRef.current || !recordCanvasRef.current) return;
@@ -2276,6 +2306,7 @@ function BoothView({ config, photoConfig, onComplete, onCancel }) {
       canvas.height = Math.round(sourceWidth / captureAspect);
     }
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     
     const render = () => {
       if (!videoRef.current) return;
@@ -2323,53 +2354,68 @@ function BoothView({ config, photoConfig, onComplete, onCancel }) {
   };
 
   const startSequence = async () => {
-    startRecording();
-    let currentCaptured = [];
-    
-    for (let currentShot = 0; currentShot < shotCount; currentShot++) {
-      setShotIndex(currentShot);
-      setStatus('countdown');
-      for (let i = config.timer; i > 0; i--) {
-        setCount(i);
-        playAudioTone('beep');
-        await wait(1000);
+    if (sequenceRef.current || cameraState !== 'ready' || !videoRef.current?.videoWidth) return;
+    sequenceRef.current = true;
+    let currentCaptured = [...captured];
+    try {
+      startRecording();
+      for (let currentShot = currentCaptured.length; currentShot < shotCount; currentShot++) {
+        setShotIndex(currentShot);
+        setStatus('countdown');
+        for (let i = config.timer; i > 0; i--) {
+          setCount(i);
+          playAudioTone('beep');
+          await wait(1000);
+        }
+        setStatus('flashing');
+        playAudioTone('shutter');
+        await wait(180);
+
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        if (!video?.videoWidth || !canvas) throw new Error('กล้องหยุดทำงานระหว่างถ่าย กรุณาลองใหม่');
+        const captureAspect = getCaptureAspect(config.layout, currentShot, photoConfig);
+        const sourceWidth = video.videoWidth;
+        const sourceHeight = video.videoHeight;
+        if (sourceWidth / sourceHeight > captureAspect) {
+          canvas.height = sourceHeight;
+          canvas.width = Math.round(sourceHeight * captureAspect);
+        } else {
+          canvas.width = sourceWidth;
+          canvas.height = Math.round(sourceWidth / captureAspect);
+        }
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('เตรียมพื้นที่บันทึกรูปไม่สำเร็จ กรุณาลองใหม่');
+        ctx.filter = config.filter.css || 'none';
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        drawVideoCover(ctx, video, 0, 0, canvas.width, canvas.height);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+        currentCaptured.push(imgData);
+        setCaptured([...currentCaptured]);
+
+        if (currentShot < shotCount - 1) {
+          setStatus('idle');
+          await wait(1000);
+        }
       }
-      setStatus('flashing');
-      playAudioTone('shutter');
-      await wait(180);
-      
-      // Capture
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const captureAspect = getCaptureAspect(config.layout, currentShot, photoConfig);
-      const sourceWidth = video.videoWidth || 1280;
-      const sourceHeight = video.videoHeight || 720;
-      if (sourceWidth / sourceHeight > captureAspect) {
-        canvas.height = sourceHeight;
-        canvas.width = Math.round(sourceHeight * captureAspect);
-      } else {
-        canvas.width = sourceWidth;
-        canvas.height = Math.round(sourceWidth / captureAspect);
-      }
-      const ctx = canvas.getContext('2d');
-      if (config.filter.css) ctx.filter = config.filter.css;
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-      drawVideoCover(ctx, video, 0, 0, canvas.width, canvas.height);
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      
-      currentCaptured.push(imgData);
-      setCaptured([...currentCaptured]);
-      
-      if (currentShot < shotCount - 1) {
-         setStatus('idle');
-         await wait(1000);
-      }
+
+      setStatus('done');
+      const finalBlob = await stopRecording();
+      setTimeout(() => onComplete([...currentCaptured], finalBlob), 800);
+    } catch (err) {
+      console.error('Photo capture error:', err);
+      await stopRecording();
+      setCameraError(err?.message || 'ถ่ายรูปไม่สำเร็จ กรุณาลองอีกครั้ง');
+      setCameraState('error');
+      setStatus('idle');
+      setCaptured(currentCaptured);
+      setShotIndex(currentCaptured.length);
+    } finally {
+      sequenceRef.current = false;
     }
-    
-    setStatus('done');
-    const finalBlob = await stopRecording();
-    setTimeout(() => onComplete([...currentCaptured], finalBlob), 800);
   };
 
   return (
@@ -2407,7 +2453,7 @@ function BoothView({ config, photoConfig, onComplete, onCancel }) {
         </header>
 
         {/* Camera Feed Container */}
-        <div className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden bg-zinc-950">
+        <div ref={cameraStageRef} className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden bg-zinc-950">
           <div className="relative shrink-0 overflow-hidden rounded-2xl border border-amber-500/35 shadow-[0_0_50px_rgba(0,0,0,0.65)] bg-black" style={{ width: `${cameraWidth}px`, height: `${cameraHeight}px` }}>
           <video 
             ref={videoRef} autoPlay playsInline muted 
@@ -2443,19 +2489,39 @@ function BoothView({ config, photoConfig, onComplete, onCancel }) {
             <div className="absolute inset-0 bg-white z-50 pointer-events-none opacity-100 animate-[pulse_0.15s_ease-out]" />
           )}
 
-          {/* Large Countdown Overlay */}
+          {/* Crystal-Clear Floating Countdown Widget (No Camera Blur, Moved to Corner for Unobstructed Posing) */}
           {status === 'countdown' && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] z-40 pointer-events-none">
-              <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-full border-4 border-amber-400/80 flex items-center justify-center bg-black/60 backdrop-blur-md shadow-[0_0_60px_rgba(245,158,11,0.5)] animate-pulse">
-                <span className="text-7xl sm:text-9xl font-black text-amber-300 font-serif drop-shadow-[0_0_30px_rgba(245,158,11,0.9)]">
+            <div className="absolute top-4 right-4 z-40 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center gap-3 bg-zinc-950/85 border-2 border-amber-400 px-4 py-2.5 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.6)] ring-1 ring-white/20">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-400 flex items-center justify-center text-zinc-950 font-black text-2xl font-mono shadow-md animate-bounce">
                   {count}
-                </span>
+                </div>
+                <div className="flex flex-col text-left pr-1">
+                  <span className="text-xs font-bold text-amber-300 font-serif tracking-wide">
+                    ช็อตที่ {shotIndex + 1}/{shotCount}
+                  </span>
+                  <span className="text-[11px] text-zinc-100 font-medium">
+                    โพสท่าได้เลย! 🤠 ({count}s)
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {cameraState !== 'ready' && (
+            <div role={cameraState === 'error' ? 'alert' : 'status'} className="absolute inset-0 z-40 flex items-center justify-center p-6 pointer-events-none">
+              <div className="max-w-sm rounded-2xl border border-white/15 bg-zinc-950/90 px-5 py-4 text-center shadow-2xl backdrop-blur-md">
+                {cameraState === 'loading' ? (
+                  <><Loader2 className="mx-auto mb-3 h-7 w-7 animate-spin text-amber-400" /><p className="text-sm font-semibold text-white">กำลังเชื่อมต่อกล้อง…</p></>
+                ) : (
+                  <><AlertCircle className="mx-auto mb-3 h-7 w-7 text-rose-300" /><p className="text-sm font-semibold text-white">{cameraError}</p><button type="button" onClick={() => setCameraAttempt(value => value + 1)} className="pointer-events-auto mt-4 rounded-xl bg-amber-400 px-4 py-2 text-sm font-bold text-zinc-950">ลองเชื่อมต่ออีกครั้ง</button></>
+                )}
               </div>
             </div>
           )}
 
           {/* Idle Shutter Trigger Button */}
-          {status === 'idle' && (
+          {status === 'idle' && cameraState === 'ready' && (
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-40">
               <button 
                 onClick={startSequence}
@@ -2773,9 +2839,28 @@ function EditorView({ config, photos, availableFrames, availableStickers, enable
     }] : [];
   }));
   const [selectedStickerId, setSelectedStickerId] = useState(null);
+  const allFrames = useMemo(() => {
+    const list = Array.isArray(availableFrames) ? [...availableFrames] : [];
+    DEFAULT_FRAMES.forEach(df => {
+      if (!list.some(f => f.id === df.id)) {
+        list.push(df);
+      }
+    });
+    return list;
+  }, [availableFrames]);
+
   const [activeTab, setActiveTab] = useState('stickers'); 
   const [selectedCategory, setSelectedCategory] = useState('sparkles');
-  const [selectedFrame, setSelectedFrame] = useState(() => availableFrames.find(frame => frame.id === config.layout.frameId) || availableFrames[0] || DEFAULT_FRAMES[0]);
+  const [selectedFrame, setSelectedFrame] = useState(() => 
+    allFrames.find(frame => frame.id === config.layout.frameId) || 
+    DEFAULT_FRAMES.find(frame => frame.id === config.layout.frameId) || 
+    allFrames[0] || 
+    DEFAULT_FRAMES[0]
+  );
+  const [activeBrandText, setActiveBrandText] = useState(() => 
+    config.layout.brandText || brandText || 'WILD WEST STUDIO'
+  );
+  const [activeTexts, setActiveTexts] = useState(() => config.layout.texts || []);
   const [isExporting, setIsExporting] = useState(false);
   const customLayout = isCustomLayout(config.layout);
   const enabledBuiltins = Array.isArray(enabledBuiltinStickerIds)
@@ -2784,8 +2869,21 @@ function EditorView({ config, photos, availableFrames, availableStickers, enable
   const [copiedPromptId, setCopiedPromptId] = useState(null);
 
   const applyTemplate = (template) => {
-    const matchedFrame = availableFrames.find(f => f.id === template.frameId) || template.frame;
+    const matchedFrame = allFrames.find(f => f.id === template.frameId) || template.frame || allFrames[0];
     setSelectedFrame(matchedFrame);
+    if (template.brandText) {
+      setActiveBrandText(template.brandText);
+    }
+    if (template.texts !== undefined) {
+      setActiveTexts(template.texts);
+    } else {
+      const hasTopBadge = (template.decorations || []).some(d => d.y < 8 && Math.abs(d.x - 50) < 20);
+      if (hasTopBadge) {
+        setActiveTexts([]);
+      } else {
+        setActiveTexts(config.layout.texts || []);
+      }
+    }
 
     const newStickers = (template.decorations || []).flatMap((decoration, idx) => {
       const asset = BUILTIN_STICKERS.find(item => item.id === decoration.stickerId);
@@ -3025,7 +3123,7 @@ function EditorView({ config, photos, availableFrames, availableStickers, enable
         ctx.font = `bold ${vW * 0.04}px '${fontFamily}', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(brandText, vW / 2, vH - (bottomArea / 2));
+        ctx.fillText(activeBrandText, vW / 2, vH - (bottomArea / 2));
 
         const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
         ctx.font = `bold ${vW * 0.02}px '${fontFamily}', sans-serif`;
@@ -3037,15 +3135,15 @@ function EditorView({ config, photos, availableFrames, availableStickers, enable
       if (customLayout) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        for (const text of config.layout.texts || []) {
+        for (const text of activeTexts || []) {
           ctx.fillStyle = text.color || selectedFrame.text || '#111827';
           ctx.font = `bold ${Math.max(vW * 0.018, vW * ((text.size || 4) / 100))}px '${fontFamily}', sans-serif`;
-          ctx.fillText(text.text, (text.x / 100) * vW, (text.y / 100) * vH, vW * 0.9);
+          ctx.fillText(text.text, (text.x / 100) * vW, (Math.min(text.y, 4.8) / 100) * vH, vW * 0.9);
         }
-        if (config.layout.brandText) {
+        if (activeBrandText) {
           ctx.fillStyle = selectedFrame.text || '#111827';
           ctx.font = `bold ${vW * 0.032}px '${fontFamily}', sans-serif`;
-          ctx.fillText(config.layout.brandText, vW / 2, vH * 0.985, vW * 0.9);
+          ctx.fillText(activeBrandText, vW / 2, vH * 0.985, vW * 0.9);
         }
       }
 
@@ -3178,8 +3276,9 @@ function EditorView({ config, photos, availableFrames, availableStickers, enable
           
           <div 
             ref={layoutRef}
-            className={`relative overflow-hidden ${customLayout ? '' : config.layout.aspect} flex flex-col transition-colors duration-300 ring-2 ring-amber-500/30 rounded-2xl max-w-full max-h-full w-auto h-[min(52dvh,680px)] md:h-[min(84dvh,780px)]`}
+            className={`relative overflow-hidden ${customLayout ? '' : config.layout.aspect} flex flex-col transition-colors duration-300 ring-2 ring-amber-500/30 rounded-2xl max-w-full max-h-full w-auto h-[min(52dvh,680px)] md:h-[min(84dvh,780px)] @container`}
             style={{ 
+              containerType: 'size',
               background: selectedFrame.type === 'image' ? '#ffffff' : selectedFrame.bg,
               padding: customLayout ? 0 : `${photoConfig?.padding ?? 5}%`,
               ...(customLayout ? getLayoutAspectStyle(config.layout) : {})
@@ -3221,19 +3320,32 @@ function EditorView({ config, photos, availableFrames, availableStickers, enable
               </div>
             )}
 
-            {(config.layout.texts || []).map(t => (
-              <div key={t.id} className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-bold pointer-events-none z-30" style={{ left: `${t.x}%`, top: `${t.y}%`, color: t.color, fontSize: `${Math.max(12, (t.size || 5) * 0.25)}vw`, fontFamily: `'${fontFamily}', sans-serif` }}>{t.text}</div>
+            {(activeTexts || []).map(t => (
+              <div 
+                key={t.id} 
+                className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-bold pointer-events-none z-30 text-center max-w-[85%] truncate" 
+                style={{ 
+                  left: `${t.x}%`, 
+                  top: `${Math.min(t.y, 4.8)}%`, 
+                  color: t.color || selectedFrame.text || '#ffffff', 
+                  fontSize: 'clamp(9px, 3cqw, 13px)', 
+                  fontFamily: `'${fontFamily}', sans-serif`,
+                  textShadow: '0 1px 3px rgba(0,0,0,0.5)'
+                }}
+              >
+                {t.text}
+              </div>
             ))}
             {!customLayout && selectedFrame.type !== 'image' && (
               <div className="h-[10%] min-h-[40px] flex items-center justify-center shrink-0 z-20">
                 <span className="font-bold text-[clamp(12px,2vh,24px)] tracking-widest font-serif" style={{ color: selectedFrame.text }}>
-                  {brandText || 'WILD WEST STUDIO'}
+                  {activeBrandText}
                 </span>
               </div>
             )}
             {customLayout && (
               <div className="absolute bottom-[2%] left-0 right-0 text-center font-bold text-[clamp(12px,2vh,24px)] tracking-widest pointer-events-none z-30 font-serif" style={{ color: selectedFrame.text }}>
-                {config.layout.brandText || brandText || 'WILD WEST STUDIO'}
+                {activeBrandText}
               </div>
             )}
             
@@ -3612,7 +3724,7 @@ function EditorView({ config, photos, availableFrames, availableStickers, enable
               <Settings className="w-4 h-4 text-amber-400" /> รูปแบบกรอบภาพ (Frames)
             </h3>
             <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
-              {availableFrames.map(frame => (
+              {allFrames.map(frame => (
                 <button
                   key={frame.id}
                   onClick={() => { setSelectedFrame(frame); playAudioTone('tap'); }}
